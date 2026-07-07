@@ -39,8 +39,9 @@ The example assumes concrete model and persistence implementations are already w
 ## Integration surface
 
 Sentinel provides the [`Authorizer`](src/Authorization/Authorizer.php), the [operators](src/Operators), and the [`Registry`](src/Registry)
-services.
-The package consumer implements all remaining contracts.
+services, including the concrete [`PermissionEntryProvider`](src/Authorization/PermissionEntryProvider.php) and
+[`RoleEntryProvider`](src/Authorization/RoleEntryProvider.php).
+The package consumer implements the domain and repository contracts.
 
 ### Foundations
 
@@ -95,23 +96,24 @@ Repositories persist both the catalog and the relationships between subjects, ro
     - Persists `role ↔ permission` links.
     - Roles only grant permissions; they do not support explicit denials.
 
-Each repository exposes the combination of `lookup`, `exists`, `allOf`, `create`, `update`, and `remove` that belongs to its contract.
+Each repository exposes the combination of `lookup`, `grants`, `exists`, `allOf`, `create`, `update`, and `remove` that belongs to its
+own contract.
 
 ### Entry providers
 
-Providers compose repositories and return the entries consumed by the `Authorizer`.
+The entry providers are concrete core services. They compose repositories and return the entries consumed by the `Authorizer`.
 
 - **PermissionEntryProvider**
-    - Contract: [`PermissionEntryProvider`](src/Authorization/PermissionEntryProvider.php)
+    - Service: [`PermissionEntryProvider`](src/Authorization/PermissionEntryProvider.php)
     - Encodes the effective precedence of permissions.
     - Invariants:
         - it only returns codes that were requested;
-        - for a subject, effective permissions are the subject's direct permissions plus those inherited from its roles;
+        - for a subject, direct permissions are resolved first and missing codes are completed through role grants;
         - **deny overrides inherited grant**: a direct denial on the subject overrides any permission inherited from a role;
         - for a role, effective permissions are the role's direct permissions.
 
 - **RoleEntryProvider**
-    - Contract: [`RoleEntryProvider`](src/Authorization/RoleEntryProvider.php)
+    - Service: [`RoleEntryProvider`](src/Authorization/RoleEntryProvider.php)
     - Resolves which requested role codes are effectively assigned to the subject.
     - It does not define precedence rules.
 
@@ -120,9 +122,8 @@ Providers compose repositories and return the entries consumed by the `Authorize
 - Reference wiring: [`tests/Integration/AuthorizerFlowTest.php`](tests/Integration/AuthorizerFlowTest.php)
 - Reference in-memory implementations: [`tests/Runtime/`](tests/Runtime)
 - In-memory repositories: [`tests/Runtime/Repositories/`](tests/Runtime/Repositories)
-- Reference `PermissionEntryProvider`: [
-  `tests/Runtime/InMemoryPermissionEntryProvider.php`](tests/Runtime/InMemoryPermissionEntryProvider.php)
-- Reference `RoleEntryProvider`: [`tests/Runtime/InMemoryRoleEntryProvider.php`](tests/Runtime/InMemoryRoleEntryProvider.php)
+- Core `PermissionEntryProvider`: [`src/Authorization/PermissionEntryProvider.php`](src/Authorization/PermissionEntryProvider.php)
+- Core `RoleEntryProvider`: [`src/Authorization/RoleEntryProvider.php`](src/Authorization/RoleEntryProvider.php)
 
 ## Authorizer
 
