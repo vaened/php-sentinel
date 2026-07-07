@@ -16,6 +16,7 @@ use Vaened\Sentinel\Errors\RoleAlreadyExists;
 use Vaened\Sentinel\Errors\RoleInUse;
 use Vaened\Sentinel\Errors\RoleNotFound;
 use Vaened\Sentinel\Registry\RoleRegistry;
+use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRolePermissionRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRoleRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemorySubjectRoleRepository;
 use Vaened\Sentinel\Tests\Runtime\TestRole;
@@ -34,7 +35,7 @@ final class RoleRegistryTest extends TestCase
         parent::setUp();
 
         $this->roles        = new InMemoryRoleRepository();
-        $this->subjectRoles = new InMemorySubjectRoleRepository();
+        $this->subjectRoles = new InMemorySubjectRoleRepository(new InMemoryRolePermissionRepository());
 
         $this->registry = new RoleRegistry($this->roles, $this->subjectRoles);
     }

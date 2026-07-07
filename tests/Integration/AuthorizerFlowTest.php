@@ -15,13 +15,13 @@ namespace Vaened\Sentinel\Tests\Integration;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Vaened\Sentinel\Authorization\Authorizer;
 use Vaened\Sentinel\Authorization\Junction;
+use Vaened\Sentinel\Authorization\PermissionEntryProvider;
+use Vaened\Sentinel\Authorization\RoleEntryProvider;
 use Vaened\Sentinel\Errors\PermissionNotFound;
 use Vaened\Sentinel\Errors\RoleNotFound;
 use Vaened\Sentinel\Operators\Denier;
 use Vaened\Sentinel\Operators\Granter;
 use Vaened\Sentinel\Operators\Revoker;
-use Vaened\Sentinel\Tests\Runtime\InMemoryPermissionEntryProvider;
-use Vaened\Sentinel\Tests\Runtime\InMemoryRoleEntryProvider;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryPermissionRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRolePermissionRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRoleRepository;
@@ -88,9 +88,9 @@ final class AuthorizerFlowTest extends TestCase
     {
         parent::setUp();
 
-        $subjectRoles       = new InMemorySubjectRoleRepository();
         $subjectPermissions = new InMemorySubjectPermissionRepository();
         $rolePermissions    = new InMemoryRolePermissionRepository();
+        $subjectRoles       = new InMemorySubjectRoleRepository($rolePermissions);
 
         $this->roles       = new InMemoryRoleRepository();
         $this->permissions = new InMemoryPermissionRepository();
@@ -118,8 +118,8 @@ final class AuthorizerFlowTest extends TestCase
         );
 
         $this->authorizer = new Authorizer(
-            new InMemoryPermissionEntryProvider($subjectPermissions, $subjectRoles, $rolePermissions),
-            new InMemoryRoleEntryProvider($subjectRoles),
+            new PermissionEntryProvider($subjectPermissions, $subjectRoles, $rolePermissions),
+            new RoleEntryProvider($subjectRoles),
         );
 
         $this->subject = new TestSubject(1);

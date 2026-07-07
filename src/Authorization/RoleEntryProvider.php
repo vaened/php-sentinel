@@ -12,15 +12,26 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Authorization;
 
+use Vaened\Sentinel\Repositories\SubjectRoleRepository;
+use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Subject;
 
-/**
- * Provides effective role entries for role evaluation.
- *
- * Implementations must only consider the requested codes and must return only the roles directly
- * assigned to the subject that match those codes.
- */
-interface RoleEntryProvider
+final readonly class RoleEntryProvider
 {
-    public function forSubject(Subject $subject, string ...$roles): RoleEntries;
+    public function __construct(
+        protected SubjectRoleRepository $roles,
+    ) {
+    }
+
+    public function forSubject(Subject $subject, string ...$roles): RoleEntries
+    {
+        if ($roles === []) {
+            return new RoleEntries([]);
+        }
+
+        return new RoleEntries(array_map(
+            static fn(Role $role): RoleEntry => new RoleEntry($role->code()),
+            $this->roles->lookup($subject, ...$roles)->values(),
+        ));
+    }
 }
