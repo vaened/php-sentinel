@@ -10,28 +10,24 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Vaened\Sentinel\Tests\Integration\Directory;
+namespace Vaened\Sentinel\Tests\Integration\Registry;
 
-use Vaened\Sentinel\Directory\RoleCreator;
-use Vaened\Sentinel\Directory\RoleRemover;
-use Vaened\Sentinel\Directory\RoleUpdater;
 use Vaened\Sentinel\Errors\RoleAlreadyExists;
 use Vaened\Sentinel\Errors\RoleInUse;
 use Vaened\Sentinel\Errors\RoleNotFound;
+use Vaened\Sentinel\Registry\RoleRegistry;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRoleRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemorySubjectRoleRepository;
 use Vaened\Sentinel\Tests\Runtime\TestRole;
 use Vaened\Sentinel\Tests\Runtime\TestSubject;
 use Vaened\Sentinel\Tests\TestCase;
 
-final class RoleDirectoryTest extends TestCase
+final class RoleRegistryTest extends TestCase
 {
     private InMemoryRoleRepository       $roles;
     private InMemorySubjectRoleRepository $subjectRoles;
 
-    private RoleCreator $creator;
-    private RoleUpdater $updater;
-    private RoleRemover $remover;
+    private RoleRegistry $registry;
 
     protected function setUp(): void
     {
@@ -40,14 +36,12 @@ final class RoleDirectoryTest extends TestCase
         $this->roles        = new InMemoryRoleRepository();
         $this->subjectRoles = new InMemorySubjectRoleRepository();
 
-        $this->creator = new RoleCreator($this->roles);
-        $this->updater = new RoleUpdater($this->roles);
-        $this->remover = new RoleRemover($this->roles, $this->subjectRoles);
+        $this->registry = new RoleRegistry($this->roles, $this->subjectRoles);
     }
 
     public function test_create_returns_a_persisted_role_with_provided_attributes(): void
     {
-        $role = $this->creator->create('admin', 'Administrator', 'Full access');
+        $role = $this->registry->create('admin', 'Administrator', 'Full access');
 
         self::assertSame('admin', $role->code());
         self::assertSame('Administrator', $role->name());
@@ -57,17 +51,17 @@ final class RoleDirectoryTest extends TestCase
 
     public function test_create_throws_when_code_already_exists(): void
     {
-        $this->creator->create('admin', 'Administrator');
+        $this->registry->create('admin', 'Administrator');
 
         $this->expectException(RoleAlreadyExists::class);
-        $this->creator->create('admin', 'Other Name');
+        $this->registry->create('admin', 'Other Name');
     }
 
     public function test_update_renames_existing_role(): void
     {
-        $role = $this->creator->create('admin', 'Administrator');
+        $role = $this->registry->create('admin', 'Administrator');
 
-        $this->updater->update($role->id(), 'Owner', 'Full access to everything');
+        $this->registry->update($role->id(), 'Owner', 'Full access to everything');
 
         $reloaded = $this->roles->lookup('admin')->find('admin');
         self::assertInstanceOf(TestRole::class, $reloaded);
@@ -77,9 +71,9 @@ final class RoleDirectoryTest extends TestCase
 
     public function test_update_can_clear_description(): void
     {
-        $role = $this->creator->create('admin', 'Administrator', 'Full access');
+        $role = $this->registry->create('admin', 'Administrator', 'Full access');
 
-        $this->updater->update($role->id(), 'Administrator', null);
+        $this->registry->update($role->id(), 'Administrator', null);
 
         $reloaded = $this->roles->lookup('admin')->find('admin');
         self::assertInstanceOf(TestRole::class, $reloaded);
@@ -89,12 +83,12 @@ final class RoleDirectoryTest extends TestCase
     public function test_update_throws_when_id_is_missing(): void
     {
         $this->expectException(RoleNotFound::class);
-        $this->updater->update(999, 'Other Name');
+        $this->registry->update(999, 'Other Name');
     }
 
     public function test_remove_silently_ignores_unknown_id(): void
     {
-        $this->remover->remove(999);
+        $this->registry->remove(999);
 
         $this->expectNotToPerformAssertions();
     }
@@ -103,18 +97,18 @@ final class RoleDirectoryTest extends TestCase
     {
         $subject = new TestSubject(1);
 
-        $role = $this->creator->create('admin', 'Administrator');
+        $role = $this->registry->create('admin', 'Administrator');
         $this->subjectRoles->create($subject, $role);
 
         $this->expectException(RoleInUse::class);
-        $this->remover->remove($role->id());
+        $this->registry->remove($role->id());
     }
 
     public function test_remove_succeeds_when_no_one_has_it(): void
     {
-        $role = $this->creator->create('admin', 'Administrator');
+        $role = $this->registry->create('admin', 'Administrator');
 
-        $this->remover->remove($role->id());
+        $this->registry->remove($role->id());
 
         self::assertFalse($this->roles->exists($role->id()));
     }
