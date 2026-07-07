@@ -15,6 +15,8 @@ namespace Vaened\Sentinel\Tests\Integration;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Vaened\Sentinel\Authorization\Authorizer;
 use Vaened\Sentinel\Authorization\Junction;
+use Vaened\Sentinel\Errors\PermissionNotFound;
+use Vaened\Sentinel\Errors\RoleNotFound;
 use Vaened\Sentinel\Operators\Denier;
 use Vaened\Sentinel\Operators\Granter;
 use Vaened\Sentinel\Operators\Revoker;
@@ -212,6 +214,22 @@ final class AuthorizerFlowTest extends TestCase
 
         self::assertFalse($this->authorizer->can($this->role, ['posts.edit']));
         self::assertTrue($this->authorizer->cannot($this->role, ['posts.edit']));
+    }
+
+    public function test_grant_throws_when_permission_does_not_exist_in_the_catalog(): void
+    {
+        $phantom = new TestPermission(999, 'phantom.perm', 'Phantom');
+
+        $this->expectException(PermissionNotFound::class);
+        $this->granter->grant($this->subject, $phantom);
+    }
+
+    public function test_grant_throws_when_role_does_not_exist_in_the_catalog(): void
+    {
+        $phantom = new TestRole(999, 'phantom.role', 'Phantom');
+
+        $this->expectException(RoleNotFound::class);
+        $this->granter->grant($this->subject, $phantom);
     }
 
     #[DataProvider('permissionEvaluationCases')]
