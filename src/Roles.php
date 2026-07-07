@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel;
 
+use Override;
+
 class Roles extends Authorizations
 {
     public static function type(): string
@@ -19,6 +21,7 @@ class Roles extends Authorizations
         return Role::class;
     }
 
+    #[Override]
     public function find(string $code): Role|null
     {
         return parent::find($code);

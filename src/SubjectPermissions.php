@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel;
 
+use Override;
+
 class SubjectPermissions extends Permissions
 {
     public static function type(): string
@@ -19,6 +21,7 @@ class SubjectPermissions extends Permissions
         return SubjectPermission::class;
     }
 
+    #[Override]
     public function find(string $code): SubjectPermission|null
     {
         return parent::find($code);
