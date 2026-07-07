@@ -22,8 +22,6 @@ interface RolePermissionRepository
 
     public function exists(int|string $permissionId): bool;
 
-    public function allOf(Role $role): Permissions;
-
     public function create(Role $role, Permission ...$permissions): void;
 
     public function remove(Role $role, Permission ...$permissions): void;

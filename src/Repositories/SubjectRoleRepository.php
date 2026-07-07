@@ -25,8 +25,6 @@ interface SubjectRoleRepository
 
     public function exists(int|string $roleId): bool;
 
-    public function allOf(Subject $subject): Roles;
-
     public function create(Subject $subject, Role ...$roles): void;
 
     public function remove(Subject $subject, Role ...$roles): void;

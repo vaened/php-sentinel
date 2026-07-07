@@ -22,8 +22,6 @@ interface SubjectPermissionRepository
 
     public function exists(int|string $permissionId): bool;
 
-    public function allOf(Subject $subject): SubjectPermissions;
-
     public function create(Subject $subject, SubjectPermission ...$permissions): void;
 
     public function update(Subject $subject, SubjectPermission ...$permissions): void;
