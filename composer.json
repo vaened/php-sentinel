@@ -1,0 +1,39 @@
+{
+  "name": "vaened/php-sentinel",
+  "description": "Framework-agnostic authorization core for PHP applications.",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "enea dhack",
+      "email": "contact@vaened.dev"
+    }
+  ],
+  "keywords": [
+    "vaened",
+    "php",
+    "sentinel",
+    "authorization",
+    "acl",
+    "security",
+    "permission",
+    "role"
+  ],
+  "require": {
+    "php": "^8.4",
+    "vaened/support": "^4.2"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^11.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Vaened\\Sentinel\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Vaened\\Sentinel\\Tests\\": "tests/"
+    }
+  }
+}
