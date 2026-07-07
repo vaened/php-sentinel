@@ -12,7 +12,9 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel;
 
-interface Identifiable
+use Stringable;
+
+interface Identifier extends Stringable
 {
-    public function id(): int|string;
+    public function value(): int|string;
 }

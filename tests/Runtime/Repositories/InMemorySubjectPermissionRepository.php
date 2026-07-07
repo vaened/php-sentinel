@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Runtime\Repositories;
 
+use Vaened\Sentinel\Identifiers;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Subject;
 use Vaened\Sentinel\SubjectPermission;
@@ -27,7 +28,7 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
 
     public function lookup(Subject $subject, string ...$codes): SubjectPermissions
     {
-        $assigned = $this->items[$subject->id()] ?? [];
+        $assigned = $this->items[Identifiers::value($subject->id())] ?? [];
         $codes    = array_flip($codes);
 
         return new SubjectPermissions(array_values(array_filter(
@@ -43,13 +44,13 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
 
     public function allOf(Subject $subject): SubjectPermissions
     {
-        return new SubjectPermissions(array_values($this->items[$subject->id()] ?? []));
+        return new SubjectPermissions(array_values($this->items[Identifiers::value($subject->id())] ?? []));
     }
 
     public function create(Subject $subject, SubjectPermission ...$permissions): void
     {
         foreach ($permissions as $permission) {
-            $this->items[$subject->id()][$permission->code()] = $permission instanceof TestSubjectPermission
+            $this->items[Identifiers::value($subject->id())][$permission->code()] = $permission instanceof TestSubjectPermission
                 ? $permission
                 : TestSubjectPermission::fromPermission($permission, $permission->isDenied());
         }
@@ -58,7 +59,7 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
     public function update(Subject $subject, SubjectPermission ...$permissions): void
     {
         foreach ($permissions as $permission) {
-            $this->items[$subject->id()][$permission->code()] = $permission instanceof TestSubjectPermission
+            $this->items[Identifiers::value($subject->id())][$permission->code()] = $permission instanceof TestSubjectPermission
                 ? $permission
                 : TestSubjectPermission::fromPermission($permission, $permission->isDenied());
         }
@@ -67,7 +68,7 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
     public function remove(Subject $subject, SubjectPermission ...$permissions): void
     {
         foreach ($permissions as $permission) {
-            unset($this->items[$subject->id()][$permission->code()]);
+            unset($this->items[Identifiers::value($subject->id())][$permission->code()]);
         }
     }
 }

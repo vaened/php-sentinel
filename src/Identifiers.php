@@ -12,7 +12,10 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel;
 
-interface Subject
+final class Identifiers
 {
-    public function id(): int|string|Identifier;
+    public static function value(int|string|Identifier $id): int|string
+    {
+        return $id instanceof Identifier ? $id->value() : $id;
+    }
 }

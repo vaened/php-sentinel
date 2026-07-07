@@ -12,16 +12,17 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Runtime;
 
+use Vaened\Sentinel\Identifier;
 use Vaened\Sentinel\Subject;
 
 final class TestSubject implements Subject
 {
     public function __construct(
-        protected int|string $id,
+        protected int|string|Identifier $id,
     ) {
     }
 
-    public function id(): int|string
+    public function id(): int|string|Identifier
     {
         return $this->id;
     }

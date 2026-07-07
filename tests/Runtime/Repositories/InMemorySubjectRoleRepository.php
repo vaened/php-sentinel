@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Runtime\Repositories;
 
+use Vaened\Sentinel\Identifiers;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Roles;
@@ -26,7 +27,7 @@ final class InMemorySubjectRoleRepository implements SubjectRoleRepository
 
     public function lookup(Subject $subject, string ...$codes): Roles
     {
-        $assigned = $this->items[$subject->id()] ?? [];
+        $assigned = $this->items[Identifiers::value($subject->id())] ?? [];
         $codes    = array_flip($codes);
 
         return new Roles(array_values(array_filter(
@@ -42,20 +43,20 @@ final class InMemorySubjectRoleRepository implements SubjectRoleRepository
 
     public function allOf(Subject $subject): Roles
     {
-        return new Roles(array_values($this->items[$subject->id()] ?? []));
+        return new Roles(array_values($this->items[Identifiers::value($subject->id())] ?? []));
     }
 
     public function create(Subject $subject, Role ...$roles): void
     {
         foreach ($roles as $role) {
-            $this->items[$subject->id()][$role->code()] = $role;
+            $this->items[Identifiers::value($subject->id())][$role->code()] = $role;
         }
     }
 
     public function remove(Subject $subject, Role ...$roles): void
     {
         foreach ($roles as $role) {
-            unset($this->items[$subject->id()][$role->code()]);
+            unset($this->items[Identifiers::value($subject->id())][$role->code()]);
         }
     }
 }

@@ -12,8 +12,10 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel;
 
-interface Authorization extends Identifiable
+interface Authorization
 {
+    public function id(): int|string;
+
     public function code(): string;
 
     public function name(): string;
