@@ -12,8 +12,6 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel;
 
-use Vaened\Sentinel\Permission;
-
 interface SubjectPermission extends Permission
 {
     public function isDenied(): bool;
