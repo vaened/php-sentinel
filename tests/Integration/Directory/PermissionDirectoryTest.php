@@ -37,8 +37,6 @@ final class PermissionDirectoryTest extends TestCase
     private PermissionUpdater $updater;
     private PermissionRemover $remover;
 
-    private TestSubject $subject;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -54,8 +52,6 @@ final class PermissionDirectoryTest extends TestCase
             $this->subjectPermissions,
             $this->rolePermissions,
         );
-
-        $this->subject = new TestSubject(1);
     }
 
     public function test_create_returns_a_persisted_permission_with_provided_attributes(): void
@@ -114,8 +110,10 @@ final class PermissionDirectoryTest extends TestCase
 
     public function test_remove_throws_when_a_subject_owns_the_permission(): void
     {
+        $subject = new TestSubject(1);
+
         $permission = $this->creator->create('users.delete', 'Delete Users');
-        $this->subjectPermissions->create($this->subject, TestSubjectPermission::fromPermission($permission));
+        $this->subjectPermissions->create($subject, TestSubjectPermission::fromPermission($permission));
 
         $this->expectException(PermissionInUse::class);
         $this->remover->remove($permission->id());

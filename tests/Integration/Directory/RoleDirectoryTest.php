@@ -33,8 +33,6 @@ final class RoleDirectoryTest extends TestCase
     private RoleUpdater $updater;
     private RoleRemover $remover;
 
-    private TestSubject $subject;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -45,8 +43,6 @@ final class RoleDirectoryTest extends TestCase
         $this->creator = new RoleCreator($this->roles);
         $this->updater = new RoleUpdater($this->roles);
         $this->remover = new RoleRemover($this->roles, $this->subjectRoles);
-
-        $this->subject = new TestSubject(1);
     }
 
     public function test_create_returns_a_persisted_role_with_provided_attributes(): void
@@ -105,8 +101,10 @@ final class RoleDirectoryTest extends TestCase
 
     public function test_remove_throws_when_a_subject_has_the_role(): void
     {
+        $subject = new TestSubject(1);
+
         $role = $this->creator->create('admin', 'Administrator');
-        $this->subjectRoles->create($this->subject, $role);
+        $this->subjectRoles->create($subject, $role);
 
         $this->expectException(RoleInUse::class);
         $this->remover->remove($role->id());
