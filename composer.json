@@ -35,5 +35,8 @@
     "psr-4": {
       "Vaened\\Sentinel\\Tests\\": "tests/"
     }
+  },
+  "scripts": {
+    "test": "vendor/bin/phpunit"
   }
 }

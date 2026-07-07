@@ -26,8 +26,7 @@ composer composer-install composer-update composer-require composer-require-modu
 			--no-ansi
 
 test: composer-install
-	@if [ -d tests ]; then \
-		docker run --rm -v $(PWD):/app -w /app $(IMAGE) vendor/bin/phpunit $(FILTER_TEST_OPTIONS); \
-	else \
-		echo "Tests directory not scaffolded yet."; \
-	fi
+	@if ! docker image inspect $(IMAGE) >/dev/null 2>&1; then \
+		docker build -t $(IMAGE) .; \
+	fi; \
+	docker run --rm -v $(PWD):/app -w /app $(IMAGE) vendor/bin/phpunit $(FILTER_TEST_OPTIONS);
