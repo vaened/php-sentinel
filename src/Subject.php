@@ -14,9 +14,4 @@ namespace Vaened\Sentinel;
 
 interface Subject extends Identifiable
 {
-    public function grant(Authorization ...$items): void;
-
-    public function revoke(Authorization ...$items): void;
-
-    public function deny(Permission ...$permissions): void;
 }

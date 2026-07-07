@@ -14,7 +14,4 @@ namespace Vaened\Sentinel;
 
 interface Role extends Authorization
 {
-    public function grant(Permission ...$permissions): void;
-
-    public function revoke(Permission ...$permissions): void;
 }
