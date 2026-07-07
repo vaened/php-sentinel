@@ -13,6 +13,8 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Tests\Runtime\Repositories;
 
 use Vaened\Sentinel\Identifiers;
+use Vaened\Sentinel\Permissions;
+use Vaened\Sentinel\Repositories\RolePermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Roles;
@@ -25,6 +27,11 @@ final class InMemorySubjectRoleRepository implements SubjectRoleRepository
      */
     protected array $items = [];
 
+    public function __construct(
+        protected RolePermissionRepository $rolePermissions,
+    ) {
+    }
+
     public function lookup(Subject $subject, string ...$codes): Roles
     {
         $assigned = $this->items[Identifiers::value($subject->id())] ?? [];
@@ -34,6 +41,19 @@ final class InMemorySubjectRoleRepository implements SubjectRoleRepository
             $assigned,
             static fn(Role $role): bool => isset($codes[$role->code()]),
         )));
+    }
+
+    public function grants(Subject $subject, string ...$codes): Permissions
+    {
+        $permissions = [];
+
+        foreach ($this->allOf($subject) as $role) {
+            foreach ($this->rolePermissions->lookup($role, ...$codes) as $permission) {
+                $permissions[$permission->code()] = $permission;
+            }
+        }
+
+        return new Permissions(array_values($permissions));
     }
 
     public function exists(int|string $roleId): bool
