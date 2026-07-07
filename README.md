@@ -29,7 +29,7 @@ $authorizer->is($user, ['admin']);         // true
 $denier->deny($user, $edit);
 $authorizer->can($user, ['posts.edit']);   // false
 
-// Revoke clears the deny or any previous assignment
+// Revoke clears any denial or previous assignment
 $revoker->revoke($user, $edit);
 $authorizer->can($user, ['posts.edit']);   // true again
 ```
@@ -38,35 +38,36 @@ The example assumes concrete model and persistence implementations are already w
 
 ## Integration surface
 
-Sentinel provides the [`Authorizer`](src/Authorization/Authorizer.php), the [operators](src/Operators/), and the [`Registry`](src/Registry/) services.
-All remaining contracts are implemented by the package consumer.
+Sentinel provides the [`Authorizer`](src/Authorization/Authorizer.php), the [operators](src/Operators), and the [`Registry`](src/Registry)
+services.
+The package consumer implements all remaining contracts.
 
 ### Foundations
 
 These contracts define the minimum model Sentinel needs to evaluate authorization.
 
 - **Subject**
-  - Contract: [`Subject`](src/Subject.php)
-  - Represents the subject requesting permissions.
-  - Sentinel only requires:
-    - `id(): int|string|Identifier`
-    - `Identifier`: [`Identifier`](src/Identifier.php)
+    - Contract: [`Subject`](src/Subject.php)
+    - Represents the subject requesting permissions.
+    - Sentinel only requires:
+        - `id(): int|string|Identifier`
+        - `Identifier`: [`Identifier`](src/Identifier.php)
 
 - **Authorization**
-  - Contract: [`Authorization`](src/Authorization.php)
-  - Defines:
-    - `id(): int|string`
-    - `code(): string`
-    - `name(): string`
-    - `description(): ?string`
-  - `Role` and `Permission` expose scalar identity.
-  - Derived contracts:
-    - **Role**
-      - Contract: [`Role`](src/Role.php)
-      - Represents a composite authorization. A role groups permissions.
-    - **Permission**
-      - Contract: [`Permission`](src/Permission.php)
-      - Represents an atomic authorization.
+    - Contract: [`Authorization`](src/Authorization.php)
+    - Defines:
+        - `id(): int|string`
+        - `code(): string`
+        - `name(): string`
+        - `description(): ?string`
+    - `Role` and `Permission` expose scalar identity.
+    - Derived contracts:
+        - **Role**
+            - Contract: [`Role`](src/Role.php)
+            - Represents a composite authorization. A role groups permissions.
+        - **Permission**
+            - Contract: [`Permission`](src/Permission.php)
+            - Represents an atomic authorization.
 
 ### Repositories
 
@@ -74,25 +75,25 @@ Repositories persist both the catalog and the relationships between subjects, ro
 
 - **RoleRepository**
   - Contract: [`RoleRepository`](src/Repositories/RoleRepository.php)
-  - Persists roles: `id`, `code`, `name`, and `description`.
+  - Stores role records with `id`, `code`, `name`, and `description`.
 
 - **PermissionRepository**
   - Contract: [`PermissionRepository`](src/Repositories/PermissionRepository.php)
-  - Persists permissions: `id`, `code`, `name`, and `description`.
+  - Stores permission records with `id`, `code`, `name`, and `description`.
 
 - **SubjectRoleRepository**
-  - Contract: [`SubjectRoleRepository`](src/Repositories/SubjectRoleRepository.php)
-  - Persists `subject ↔ role` links.
+    - Contract: [`SubjectRoleRepository`](src/Repositories/SubjectRoleRepository.php)
+    - Persists `subject ↔ role` links.
 
 - **SubjectPermissionRepository**
-  - Contract: [`SubjectPermissionRepository`](src/Repositories/SubjectPermissionRepository.php)
-  - Persists `subject ↔ permission` links.
-  - Each assignment exposes `isDenied()`.
+    - Contract: [`SubjectPermissionRepository`](src/Repositories/SubjectPermissionRepository.php)
+    - Persists `subject ↔ permission` links.
+    - Each assignment exposes `isDenied()`.
 
 - **RolePermissionRepository**
-  - Contract: [`RolePermissionRepository`](src/Repositories/RolePermissionRepository.php)
-  - Persists `role ↔ permission` links.
-  - Roles only grant permissions; they do not support explicit denials.
+    - Contract: [`RolePermissionRepository`](src/Repositories/RolePermissionRepository.php)
+    - Persists `role ↔ permission` links.
+    - Roles only grant permissions; they do not support explicit denials.
 
 Each repository exposes the combination of `lookup`, `exists`, `allOf`, `create`, `update`, and `remove` that belongs to its contract.
 
@@ -101,30 +102,33 @@ Each repository exposes the combination of `lookup`, `exists`, `allOf`, `create`
 Providers compose repositories and return the entries consumed by the `Authorizer`.
 
 - **PermissionEntryProvider**
-  - Contract: [`PermissionEntryProvider`](src/Authorization/PermissionEntryProvider.php)
-  - Encodes the effective precedence of permissions.
-  - Invariants:
-    - it only returns codes that were requested;
-    - for a subject, effective permissions are the subject's direct permissions plus those inherited from its roles;
-    - **deny overrides inherited grant**: a direct denial on the subject overrides any permission inherited from a role;
-    - for a role, effective permissions are the role's direct permissions.
+    - Contract: [`PermissionEntryProvider`](src/Authorization/PermissionEntryProvider.php)
+    - Encodes the effective precedence of permissions.
+    - Invariants:
+        - it only returns codes that were requested;
+        - for a subject, effective permissions are the subject's direct permissions plus those inherited from its roles;
+        - **deny overrides inherited grant**: a direct denial on the subject overrides any permission inherited from a role;
+        - for a role, effective permissions are the role's direct permissions.
 
 - **RoleEntryProvider**
-  - Contract: [`RoleEntryProvider`](src/Authorization/RoleEntryProvider.php)
-  - Resolves which requested role codes are effectively assigned to the subject.
-  - It does not define precedence rules.
+    - Contract: [`RoleEntryProvider`](src/Authorization/RoleEntryProvider.php)
+    - Resolves which requested role codes are effectively assigned to the subject.
+    - It does not define precedence rules.
 
 ## Implementation references
 
 - Reference wiring: [`tests/Integration/AuthorizerFlowTest.php`](tests/Integration/AuthorizerFlowTest.php)
-- Reference in-memory implementations: [`tests/Runtime/`](tests/Runtime/)
-- In-memory repositories: [`tests/Runtime/Repositories/`](tests/Runtime/Repositories/)
-- Reference `PermissionEntryProvider`: [`tests/Runtime/InMemoryPermissionEntryProvider.php`](tests/Runtime/InMemoryPermissionEntryProvider.php)
+- Reference in-memory implementations: [`tests/Runtime/`](tests/Runtime)
+- In-memory repositories: [`tests/Runtime/Repositories/`](tests/Runtime/Repositories)
+- Reference `PermissionEntryProvider`: [
+  `tests/Runtime/InMemoryPermissionEntryProvider.php`](tests/Runtime/InMemoryPermissionEntryProvider.php)
 - Reference `RoleEntryProvider`: [`tests/Runtime/InMemoryRoleEntryProvider.php`](tests/Runtime/InMemoryRoleEntryProvider.php)
 
 ## Authorizer
 
-[`Authorizer`](src/Authorization/Authorizer.php) is the read gate. It combines a `PermissionEntryProvider` and a `RoleEntryProvider` and answers boolean questions about a `Subject` or a `Role`. It is constructed once with both providers and is then ready to answer `can`, `cannot`, `is`, and `isnt` at any time.
+[`Authorizer`](src/Authorization/Authorizer.php) is the read gate. It combines a `PermissionEntryProvider` and a `RoleEntryProvider` and
+answers boolean questions about a `Subject` or a `Role`. It is constructed once with both providers and is then ready to answer `can`,
+`cannot`, `is`, and `isnt` at any time.
 
 ### `can()`
 
@@ -140,7 +144,8 @@ Inverse of `can()`. Same signature.
 
 ### `is()`
 
-Returns `true` when the subject has at least one of the requested roles, or all of them when you pass `Junction::And`. Unlike `can`, it only accepts `Subject` as owner, not `Role`.
+Returns `true` when the subject has at least one of the requested roles, or all of them when you pass `Junction::And`. Unlike `can`, it only
+accepts `Subject` as an owner, not `Role`.
 
 - `$subject`: `Subject` — the subject being evaluated.
 - `$roles`: `array<string>` — the role codes to evaluate.
@@ -159,7 +164,8 @@ Enum with two cases:
 
 ## Operators
 
-The three operators mutate state through your repositories. All of them are variadic, so they can attach or detach multiple items in a single call.
+The three operators mutate state through your repositories. All of them are variadic, so they can attach or detach multiple items in a
+single call.
 
 ### Granter
 
@@ -171,22 +177,25 @@ $granter->grant($admin, $edit, $delete);         // admin role has two permissio
 $granter->grant($user, $admin, $edit, $delete);  // everything in one call
 ```
 
-It accepts `Subject` or `Role` as owner. If it receives a `Role` as owner and another `Role` as authorization, it throws [`InvalidAuthorization`](src/Errors/InvalidAuthorization.php): roles cannot contain other roles.
+It accepts `Subject` or `Role` as owner. If it receives a `Role` as owner and another `Role` as authorization, it throws [
+`InvalidAuthorization`](src/Errors/InvalidAuthorization.php): roles cannot contain other roles.
 
 ### Denier
 
-[`Denier`](src/Operators/Denier.php) explicitly denies permissions to a subject. It applies the central rule: a direct denial overrides any inherited permission.
+[`Denier`](src/Operators/Denier.php) explicitly denies permissions to a subject. It applies the central rule: a direct denial overrides any
+inherited permission.
 
 ```php
 $denier->deny($user, $edit);
 $denier->deny($user, $edit, $delete);   // variadic
 ```
 
-It only accepts `Subject` as owner. Roles do not support denials.
+It only accepts `Subject` as an owner. Roles do not support denials.
 
 ### Revoker
 
-[`Revoker`](src/Operators/Revoker.php) removes any previous assignment, whether it was a grant or a deny. It is idempotent: if the assignment does not exist, it makes no changes.
+[`Revoker`](src/Operators/Revoker.php) removes any previous assignment, whether it was a grant or a denial. It is idempotent: if the
+assignment does not exist, it makes no changes.
 
 ```php
 $revoker->revoke($user, $admin);
@@ -197,7 +206,8 @@ It accepts `Subject` or `Role` as owner.
 
 ## Registry
 
-[`PermissionRegistry`](src/Registry/PermissionRegistry.php) and [`RoleRegistry`](src/Registry/RoleRegistry.php) manage the registration operations for each entity: `create`, `update`, and `remove`.
+[`PermissionRegistry`](src/Registry/PermissionRegistry.php) and [`RoleRegistry`](src/Registry/RoleRegistry.php) manage the registration
+operations for each entity: `create`, `update`, and `remove`.
 
 ```php
 $roleRegistry       = new RoleRegistry($roleRepository, $subjectRoleRepository);
@@ -214,7 +224,8 @@ $roleRegistry->remove($admin->id());
 
 ## Errors
 
-All exceptions thrown by Sentinel extend [`AuthorizationError`](src/Errors/AuthorizationError.php), which itself extends `RuntimeException`. To catch any Sentinel error:
+All exceptions thrown by Sentinel extend [`AuthorizationError`](src/Errors/AuthorizationError.php), which itself extends `RuntimeException`.
+To catch any Sentinel error:
 
 ```php
 try {
@@ -226,15 +237,15 @@ try {
 
 Specific exceptions:
 
-| Exception                 | Thrown when                                                               |
-|--------------------------|---------------------------------------------------------------------------|
-| `PermissionAlreadyExists` | `PermissionRegistry::create` receives a code that already exists.         |
-| `RoleAlreadyExists`       | `RoleRegistry::create` receives a code that already exists.               |
-| `PermissionNotFound`      | `PermissionRegistry::update` or an operator cannot find the id/code.      |
-| `RoleNotFound`            | `RoleRegistry::update` or an operator cannot find the id/code.            |
-| `PermissionInUse`         | `PermissionRegistry::remove` detects a linked subject or role.            |
-| `RoleInUse`               | `RoleRegistry::remove` detects a subject linked to that role.             |
-| `InvalidAuthorization`    | `Granter` receives roles as targets from an owner that is also a role.    |
+| Exception                 | Thrown when                                                            |
+|---------------------------|------------------------------------------------------------------------|
+| `PermissionAlreadyExists` | `PermissionRegistry::create` receives a code that already exists.      |
+| `RoleAlreadyExists`       | `RoleRegistry::create` receives a code that already exists.            |
+| `PermissionNotFound`      | `PermissionRegistry::update` or an operator cannot find the id/code.   |
+| `RoleNotFound`            | `RoleRegistry::update` or an operator cannot find the id/code.         |
+| `PermissionInUse`         | `PermissionRegistry::remove` detects a linked subject or role.         |
+| `RoleInUse`               | `RoleRegistry::remove` detects a subject linked to that role.          |
+| `InvalidAuthorization`    | `Granter` receives roles as targets from an owner that is also a role. |
 
 ## Development
 
