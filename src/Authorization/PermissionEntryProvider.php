@@ -24,7 +24,7 @@ final readonly class PermissionEntryProvider
     ) {
     }
 
-    public function forSubject(Subject $subject, string ...$permissions): PermissionEntries
+    public function for(Subject $subject, string ...$permissions): PermissionEntries
     {
         if (empty($permissions)) {
             return new PermissionEntries([]);

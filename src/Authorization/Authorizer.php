@@ -25,7 +25,7 @@ final readonly class Authorizer
 
     public function can(Subject $subject, array $permissions, Junction $junction = Junction::Or): bool
     {
-        $facts = $this->permissions->forSubject($subject, ...$permissions);
+        $facts = $this->permissions->for($subject, ...$permissions);
 
         return $this->evaluate(
             $permissions,
@@ -41,7 +41,7 @@ final readonly class Authorizer
 
     public function is(Subject $subject, array $roles, Junction $junction = Junction::Or): bool
     {
-        $facts = $this->roles->forSubject($subject, ...$roles);
+        $facts = $this->roles->for($subject, ...$roles);
 
         return $this->evaluate($roles, $junction, static fn(string $role): bool => $facts->has($role));
     }

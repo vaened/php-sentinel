@@ -23,7 +23,7 @@ final readonly class RoleEntryProvider
     ) {
     }
 
-    public function forSubject(Subject $subject, string ...$roles): RoleEntries
+    public function for(Subject $subject, string ...$roles): RoleEntries
     {
         if ($roles === []) {
             return new RoleEntries([]);
