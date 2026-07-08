@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-07-08
+
+### Changed
+- `Authorizations` is no longer abstract. Provides `type(): string` returning `Authorization::class` directly. Implementations of the relation repositories can return `new Authorizations([...])` without wrapping in `Roles`/`Permissions`. Subclasses (`Roles`, `Permissions`, `SubjectPermissions`) are unchanged.
+
+[0.3.1]: https://github.com/vaened/php-sentinel/compare/v0.3.0...v0.3.1
+
+## [0.3.0] - 2026-07-08
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## [0.3.0] - 2026-07-08
 
 ### Added
