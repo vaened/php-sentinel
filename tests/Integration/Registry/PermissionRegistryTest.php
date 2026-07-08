@@ -28,10 +28,12 @@ use Vaened\Sentinel\Tests\TestCase;
 final class PermissionRegistryTest extends TestCase
 {
     private InMemoryPermissionRepository        $permissions;
+
     private InMemorySubjectPermissionRepository $subjectPermissions;
+
     private InMemoryRolePermissionRepository    $rolePermissions;
 
-    private PermissionRegistry $registry;
+    private PermissionRegistry                  $registry;
 
     protected function setUp(): void
     {
@@ -107,7 +109,7 @@ final class PermissionRegistryTest extends TestCase
         $subject = new TestSubject(1);
 
         $permission = $this->registry->create('users.delete', 'Delete Users');
-        $this->subjectPermissions->create($subject, TestSubjectPermission::fromPermission($permission));
+        $this->subjectPermissions->create($subject, TestSubjectPermission::from($permission));
 
         $this->expectException(PermissionInUse::class);
         $this->registry->remove($permission->id());

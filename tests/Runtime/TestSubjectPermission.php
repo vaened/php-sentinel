@@ -18,16 +18,17 @@ use Vaened\Sentinel\SubjectPermission;
 final class TestSubjectPermission extends TestPermission implements SubjectPermission
 {
     public function __construct(
-        int|string $id,
-        string $code,
-        string $name,
-        string|null $description = null,
+        int|string     $id,
+        string         $code,
+        string         $name,
+        string|null    $description = null,
         protected bool $denied = false,
-    ) {
+    )
+    {
         parent::__construct($id, $code, $name, $description);
     }
 
-    public static function fromPermission(Permission $permission, bool $denied = false): self
+    public static function from(Permission $permission, bool $denied = false): self
     {
         return new self(
             $permission->id(),

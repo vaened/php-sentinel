@@ -52,7 +52,7 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
         foreach ($permissions as $permission) {
             $this->items[Identifiers::value($subject->id())][$permission->code()] = $permission instanceof TestSubjectPermission
                 ? $permission
-                : TestSubjectPermission::fromPermission($permission, $permission->isDenied());
+                : TestSubjectPermission::from($permission, $permission->isDenied());
         }
     }
 
@@ -61,7 +61,7 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
         foreach ($permissions as $permission) {
             $this->items[Identifiers::value($subject->id())][$permission->code()] = $permission instanceof TestSubjectPermission
                 ? $permission
-                : TestSubjectPermission::fromPermission($permission, $permission->isDenied());
+                : TestSubjectPermission::from($permission, $permission->isDenied());
         }
     }
 

@@ -25,8 +25,11 @@ use Vaened\Sentinel\Tests\TestCase;
 final class PermissionEntryProviderTest extends TestCase
 {
     private SubjectPermissionRepository $subjectPermissions;
+
     private SubjectRoleRepository       $subjectRoles;
+
     private PermissionEntryProvider     $provider;
+
     private TestSubject                 $subject;
 
     protected function setUp(): void
@@ -57,10 +60,10 @@ final class PermissionEntryProviderTest extends TestCase
         $denied  = new TestPermission(2, 'posts.delete', 'Delete Posts');
 
         $this->subjectPermissions->method('lookup')
-            ->willReturn(new SubjectPermissions([
-                TestSubjectPermission::fromPermission($allowed),
-                TestSubjectPermission::fromPermission($denied, true),
-            ]));
+                                 ->willReturn(new SubjectPermissions([
+                                     TestSubjectPermission::from($allowed),
+                                     TestSubjectPermission::from($denied, true),
+                                 ]));
 
         $entries = $this->provider->for($this->subject, 'posts.edit', 'posts.delete');
 
@@ -74,10 +77,10 @@ final class PermissionEntryProviderTest extends TestCase
         $permission = new TestPermission(1, 'posts.edit', 'Edit Posts');
 
         $this->subjectPermissions->method('lookup')
-            ->willReturn(new SubjectPermissions([]));
+                                 ->willReturn(new SubjectPermissions([]));
 
         $this->subjectRoles->method('grants')
-            ->willReturn(new Permissions([$permission]));
+                           ->willReturn(new Permissions([$permission]));
 
         $entries = $this->provider->for($this->subject, 'posts.edit');
 
@@ -90,12 +93,12 @@ final class PermissionEntryProviderTest extends TestCase
         $permission = new TestPermission(1, 'posts.edit', 'Edit Posts');
 
         $this->subjectPermissions->method('lookup')
-            ->willReturn(new SubjectPermissions([
-                TestSubjectPermission::fromPermission($permission, true),
-            ]));
+                                 ->willReturn(new SubjectPermissions([
+                                     TestSubjectPermission::from($permission, true),
+                                 ]));
 
         $this->subjectRoles->method('grants')
-            ->willReturn(new Permissions([$permission]));
+                           ->willReturn(new Permissions([$permission]));
 
         $entries = $this->provider->for($this->subject, 'posts.edit');
 
@@ -108,12 +111,12 @@ final class PermissionEntryProviderTest extends TestCase
         $permission = new TestPermission(1, 'posts.edit', 'Edit Posts');
 
         $this->subjectPermissions->method('lookup')
-            ->willReturn(new SubjectPermissions([
-                TestSubjectPermission::fromPermission($permission),
-            ]));
+                                 ->willReturn(new SubjectPermissions([
+                                     TestSubjectPermission::from($permission),
+                                 ]));
 
         $this->subjectRoles->method('grants')
-            ->willReturn(new Permissions([$permission]));
+                           ->willReturn(new Permissions([$permission]));
 
         $entries = $this->provider->for($this->subject, 'posts.edit');
 
@@ -124,10 +127,10 @@ final class PermissionEntryProviderTest extends TestCase
     public function test_returns_empty_entries_when_neither_direct_nor_role_grants_have_the_codes(): void
     {
         $this->subjectPermissions->method('lookup')
-            ->willReturn(new SubjectPermissions([]));
+                                 ->willReturn(new SubjectPermissions([]));
 
         $this->subjectRoles->method('grants')
-            ->willReturn(new Permissions([]));
+                           ->willReturn(new Permissions([]));
 
         $entries = $this->provider->for($this->subject, 'posts.edit', 'posts.delete');
 
