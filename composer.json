@@ -1,6 +1,6 @@
 {
   "name": "vaened/php-sentinel",
-  "description": "Framework-agnostic authorization core for PHP applications.",
+  "description": "A framework-agnostic authorization Core for PHP. Roles and permissions with deny-overrides-grant precedence built in.",
   "type": "library",
   "license": "MIT",
   "authors": [
