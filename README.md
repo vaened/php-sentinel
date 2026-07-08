@@ -1,4 +1,6 @@
 # PHP Sentinel
+[![Tests](https://github.com/vaened/php-sentinel/actions/workflows/tests.yml/badge.svg)](https://github.com/vaened/php-sentinel/actions/workflows/tests.yml)
+[![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
 
 Framework-agnostic authorization core for PHP 8.4+.
 
