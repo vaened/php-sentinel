@@ -12,9 +12,9 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Repositories;
 
+use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Roles;
-use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Subject;
 
 interface SubjectRoleRepository
@@ -22,6 +22,8 @@ interface SubjectRoleRepository
     public function lookup(Subject $subject, string ...$codes): Roles;
 
     public function grants(Subject $subject, string ...$codes): Permissions;
+
+    public function allOf(Subject $subject): Roles;
 
     public function exists(int|string $roleId): bool;
 

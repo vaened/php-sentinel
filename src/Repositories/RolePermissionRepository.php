@@ -20,6 +20,8 @@ interface RolePermissionRepository
 {
     public function lookup(Role $role, string ...$codes): Permissions;
 
+    public function allOf(Role $role): Permissions;
+
     public function exists(int|string $permissionId): bool;
 
     public function create(Role $role, Permission ...$permissions): void;

@@ -20,6 +20,8 @@ interface SubjectPermissionRepository
 {
     public function lookup(Subject $subject, string ...$codes): SubjectPermissions;
 
+    public function allOf(Subject $subject): SubjectPermissions;
+
     public function exists(int|string $permissionId): bool;
 
     public function create(Subject $subject, SubjectPermission ...$permissions): void;
