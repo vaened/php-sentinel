@@ -257,6 +257,8 @@ make composer-install
 make test
 ```
 
-## License
+## Additional documentation
 
-MIT — see [LICENSE](LICENSE).
+You can find more details in the source code as well as in the tests located in [`tests/`](tests).
+
+The tests cover different usage scenarios and can serve as additional reference for understanding the library’s behavior.
