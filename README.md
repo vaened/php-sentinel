@@ -1,4 +1,5 @@
 # PHP Sentinel
+
 [![Tests](https://github.com/vaened/php-sentinel/actions/workflows/tests.yml/badge.svg)](https://github.com/vaened/php-sentinel/actions/workflows/tests.yml)
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
 
@@ -59,30 +60,33 @@ These contracts define the minimum model Sentinel needs to evaluate authorizatio
 - **Authorization**
     - Contract: [`Authorization`](src/Authorization.php)
     - Defines:
-        - `id(): int|string`
-        - `code(): string`
-        - `name(): string`
-        - `description(): ?string`
-    - `Role` and `Permission` expose scalar identity.
+        - `code(): string` — the canonical identity Sentinel works with.
+    - Metadata fields live on the entity contracts that need them.
     - Derived contracts:
         - **Role**
             - Contract: [`Role`](src/Role.php)
             - Represents a composite authorization. A role groups permissions.
+            - Provides `id()`, `name()`, `description()` for catalog use.
         - **Permission**
             - Contract: [`Permission`](src/Permission.php)
             - Represents an atomic authorization.
+            - Provides `id()`, `name()`, `description()` for catalog use.
+        - **SubjectPermission**
+            - Contract: [`SubjectPermission`](src/SubjectPermission.php)
+            - Represents a `subject ↔ permission` link.
+            - Provides `isDenied()` for direct overrides. The relation carries only the effective state of the link.
 
 ### Repositories
 
 Repositories persist both the catalog and the relationships between subjects, roles, and permissions.
 
 - **RoleRepository**
-  - Contract: [`RoleRepository`](src/Repositories/RoleRepository.php)
-  - Stores role records with `id`, `code`, `name`, and `description`.
+    - Contract: [`RoleRepository`](src/Repositories/RoleRepository.php)
+    - Stores role records with `id`, `code`, `name`, and `description`.
 
 - **PermissionRepository**
-  - Contract: [`PermissionRepository`](src/Repositories/PermissionRepository.php)
-  - Stores permission records with `id`, `code`, `name`, and `description`.
+    - Contract: [`PermissionRepository`](src/Repositories/PermissionRepository.php)
+    - Stores permission records with `id`, `code`, `name`, and `description`.
 
 - **SubjectRoleRepository**
     - Contract: [`SubjectRoleRepository`](src/Repositories/SubjectRoleRepository.php)
@@ -91,7 +95,7 @@ Repositories persist both the catalog and the relationships between subjects, ro
 - **SubjectPermissionRepository**
     - Contract: [`SubjectPermissionRepository`](src/Repositories/SubjectPermissionRepository.php)
     - Persists `subject ↔ permission` links.
-    - Each assignment exposes `isDenied()`.
+    - Each assignment exposes `isDenied()`. Writes receive `SubjectPermissionSnapshot` value objects.
 
 - **RolePermissionRepository**
     - Contract: [`RolePermissionRepository`](src/Repositories/RolePermissionRepository.php)
