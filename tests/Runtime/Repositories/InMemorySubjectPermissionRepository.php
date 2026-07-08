@@ -39,7 +39,8 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
 
     public function exists(int|string $permissionId): bool
     {
-        return array_any($this->items, fn($permissions) => array_any($permissions, fn($permission) => $permission->id() === $permissionId));
+        return array_any($this->items,
+            fn($permissions) => array_any($permissions, fn($permission) => $permission->permissionId() === $permissionId));
     }
 
     public function allOf(Subject $subject): SubjectPermissions
@@ -52,7 +53,7 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
         foreach ($permissions as $permission) {
             $this->items[Identifiers::value($subject->id())][$permission->code()] = $permission instanceof TestSubjectPermission
                 ? $permission
-                : TestSubjectPermission::from($permission, $permission->isDenied());
+                : new TestSubjectPermission($permission->permissionId(), $permission->code(), $permission->isDenied());
         }
     }
 
@@ -61,7 +62,7 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
         foreach ($permissions as $permission) {
             $this->items[Identifiers::value($subject->id())][$permission->code()] = $permission instanceof TestSubjectPermission
                 ? $permission
-                : TestSubjectPermission::from($permission, $permission->isDenied());
+                : new TestSubjectPermission($permission->permissionId(), $permission->code(), $permission->isDenied());
         }
     }
 

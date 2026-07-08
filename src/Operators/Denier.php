@@ -47,12 +47,12 @@ final readonly class Denier extends Operator
             $assignment = $assigned->find($permission->code());
 
             if (null === $assignment) {
-                $toCreate[] = new SubjectPermissionSnapshot($permission, true);
+                $toCreate[] = SubjectPermissionSnapshot::from($permission, true);
                 continue;
             }
 
             if (!$assignment->isDenied()) {
-                $toUpdate[] = new SubjectPermissionSnapshot($assignment, true);
+                $toUpdate[] = new SubjectPermissionSnapshot($assignment->permissionId(), $assignment->code(), true);
             }
         }
 

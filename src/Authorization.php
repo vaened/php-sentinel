@@ -14,11 +14,5 @@ namespace Vaened\Sentinel;
 
 interface Authorization
 {
-    public function id(): int|string;
-
     public function code(): string;
-
-    public function name(): string;
-
-    public function description(): string|null;
 }

@@ -69,12 +69,12 @@ final readonly class Granter extends Operator
             $assignment = $assigned->find($permission->code());
 
             if (null === $assignment) {
-                $toCreate[] = new SubjectPermissionSnapshot($permission);
+                $toCreate[] = SubjectPermissionSnapshot::from($permission);
                 continue;
             }
 
             if ($assignment->isDenied()) {
-                $toUpdate[] = new SubjectPermissionSnapshot($assignment);
+                $toUpdate[] = new SubjectPermissionSnapshot($assignment->permissionId(), $assignment->code());
             }
         }
 

@@ -12,7 +12,9 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel;
 
-interface SubjectPermission extends Permission
+interface SubjectPermission extends Authorization
 {
+    public function permissionId(): int|string;
+
     public function isDenied(): bool;
 }

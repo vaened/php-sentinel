@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Operators;
 
+use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Errors\PermissionNotFound;
 use Vaened\Sentinel\Errors\RoleNotFound;
 use Vaened\Sentinel\Permissions;
@@ -22,15 +23,16 @@ use Vaened\Sentinel\Roles;
 abstract readonly class Operator
 {
     public function __construct(
-        protected RoleRepository $roles,
+        protected RoleRepository       $roles,
         protected PermissionRepository $permissions,
-    ) {
+    )
+    {
     }
 
-    protected function takePermissionsOrFail(Permissions $permissions): Permissions
+    protected function takePermissionsOrFail(Permissions $permissions): Authorizations
     {
         $available = $this->permissions->lookup(...$permissions->codes());
-        $missing = $available->missing($permissions->codes());
+        $missing   = $available->missing($permissions->codes());
 
         if (!empty($missing)) {
             throw PermissionNotFound::fromCodes($missing);
@@ -39,10 +41,10 @@ abstract readonly class Operator
         return $available;
     }
 
-    protected function takeRolesOrFail(Roles $roles): Roles
+    protected function takeRolesOrFail(Roles $roles): Authorizations
     {
         $available = $this->roles->lookup(...$roles->codes());
-        $missing = $available->missing($roles->codes());
+        $missing   = $available->missing($roles->codes());
 
         if (!empty($missing)) {
             throw RoleNotFound::fromCodes($missing);

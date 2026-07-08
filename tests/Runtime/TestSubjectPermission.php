@@ -15,17 +15,14 @@ namespace Vaened\Sentinel\Tests\Runtime;
 use Vaened\Sentinel\Permission;
 use Vaened\Sentinel\SubjectPermission;
 
-final class TestSubjectPermission extends TestPermission implements SubjectPermission
+final class TestSubjectPermission implements SubjectPermission
 {
     public function __construct(
-        int|string     $id,
-        string         $code,
-        string         $name,
-        string|null    $description = null,
-        protected bool $denied = false,
+        protected int|string $permissionId,
+        protected string     $code,
+        protected bool       $denied = false,
     )
     {
-        parent::__construct($id, $code, $name, $description);
     }
 
     public static function from(Permission $permission, bool $denied = false): self
@@ -33,10 +30,18 @@ final class TestSubjectPermission extends TestPermission implements SubjectPermi
         return new self(
             $permission->id(),
             $permission->code(),
-            $permission->name(),
-            $permission->description(),
             $denied,
         );
+    }
+
+    public function permissionId(): int|string
+    {
+        return $this->permissionId;
+    }
+
+    public function code(): string
+    {
+        return $this->code;
     }
 
     public function isDenied(): bool

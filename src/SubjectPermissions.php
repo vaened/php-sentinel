@@ -14,7 +14,7 @@ namespace Vaened\Sentinel;
 
 use Override;
 
-class SubjectPermissions extends Permissions
+class SubjectPermissions extends Authorizations
 {
     public static function type(): string
     {

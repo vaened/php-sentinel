@@ -20,7 +20,7 @@ final class SubjectPermissionsCollectionTest extends AuthorizationsCollectionTes
 {
     protected function create(int $id, string $code): TestSubjectPermission
     {
-        return new TestSubjectPermission($id, $code, ucfirst($code));
+        return new TestSubjectPermission($id, $code);
     }
 
     protected function collect(array $entities): SubjectPermissions

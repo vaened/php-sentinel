@@ -14,4 +14,9 @@ namespace Vaened\Sentinel;
 
 interface Permission extends Authorization
 {
+    public function id(): int|string;
+
+    public function name(): string;
+
+    public function description(): string|null;
 }

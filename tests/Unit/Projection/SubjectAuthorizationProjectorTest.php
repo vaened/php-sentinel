@@ -78,8 +78,8 @@ final class SubjectAuthorizationProjectorTest extends TestCase
             ->method('allOf')
             ->with($subject)
             ->willReturn(new SubjectPermissions([
-                new TestSubjectPermission(100, 'posts.edit', 'Edit Posts'),
-                new TestSubjectPermission(200, 'posts.delete', 'Delete Posts', denied: true),
+                new TestSubjectPermission(100, 'posts.edit'),
+                new TestSubjectPermission(200, 'posts.delete', denied: true),
             ]));
 
         $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
@@ -118,7 +118,7 @@ final class SubjectAuthorizationProjectorTest extends TestCase
             ->method('allOf')
             ->with($subject)
             ->willReturn(new SubjectPermissions([
-                new TestSubjectPermission(300, 'users.delete', 'Delete Users'),
+                new TestSubjectPermission(300, 'users.delete'),
             ]));
 
         $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
@@ -159,7 +159,7 @@ final class SubjectAuthorizationProjectorTest extends TestCase
             ->method('allOf')
             ->with($subject)
             ->willReturn(new SubjectPermissions([
-                new TestSubjectPermission(400, 'posts.edit', 'Edit Posts', denied: true),
+                new TestSubjectPermission(400, 'posts.edit', denied: true),
             ]));
 
         $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);

@@ -68,7 +68,7 @@ final readonly class Revoker extends Operator
             $assignment = $assigned->find($permission->code());
 
             if (null !== $assignment) {
-                $toRemove[] = new SubjectPermissionSnapshot($assignment, $assignment->isDenied());
+                $toRemove[] = new SubjectPermissionSnapshot($assignment->permissionId(), $assignment->code(), $assignment->isDenied());
             }
         }
 

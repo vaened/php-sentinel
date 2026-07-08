@@ -18,30 +18,26 @@ use Vaened\Sentinel\SubjectPermission;
 readonly class SubjectPermissionSnapshot implements SubjectPermission
 {
     public function __construct(
-        protected Permission $permission,
-        protected bool       $isDenied = false,
+        private int|string $id,
+        private string     $code,
+        private bool       $isDenied = false,
     )
     {
     }
 
-    public function id(): int|string
+    public static function from(Permission $permission, bool $isDenied = false): self
     {
-        return $this->permission->id();
+        return new self($permission->id(), $permission->code(), $isDenied);
+    }
+
+    public function permissionId(): int|string
+    {
+        return $this->id;
     }
 
     public function code(): string
     {
-        return $this->permission->code();
-    }
-
-    public function name(): string
-    {
-        return $this->permission->name();
-    }
-
-    public function description(): string|null
-    {
-        return $this->permission->description();
+        return $this->code;
     }
 
     public function isDenied(): bool
