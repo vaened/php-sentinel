@@ -12,11 +12,8 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Authorization;
 
-use Vaened\Sentinel\Permission;
-use Vaened\Sentinel\Repositories\RolePermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
-use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Subject;
 
 final readonly class PermissionEntryProvider
@@ -24,7 +21,6 @@ final readonly class PermissionEntryProvider
     public function __construct(
         protected SubjectPermissionRepository $subjectPermissions,
         protected SubjectRoleRepository $subjectRoles,
-        protected RolePermissionRepository $rolePermissions,
     ) {
     }
 
@@ -54,13 +50,5 @@ final readonly class PermissionEntryProvider
         }
 
         return new PermissionEntries(array_values($entries));
-    }
-
-    public function forRole(Role $role, string ...$permissions): PermissionEntries
-    {
-        return new PermissionEntries(array_map(
-            static fn(Permission $permission): PermissionEntry => new PermissionEntry($permission->code()),
-            $this->rolePermissions->lookup($role, ...$permissions)->values(),
-        ));
     }
 }

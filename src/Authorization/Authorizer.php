@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Authorization;
 
-use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Subject;
 
 final readonly class Authorizer
@@ -24,11 +23,9 @@ final readonly class Authorizer
     {
     }
 
-    public function can(Subject|Role $owner, array $permissions, Junction $junction = Junction::Or): bool
+    public function can(Subject $subject, array $permissions, Junction $junction = Junction::Or): bool
     {
-        $facts = $owner instanceof Subject
-            ? $this->permissions->forSubject($owner, ...$permissions)
-            : $this->permissions->forRole($owner, ...$permissions);
+        $facts = $this->permissions->forSubject($subject, ...$permissions);
 
         return $this->evaluate(
             $permissions,
@@ -37,9 +34,9 @@ final readonly class Authorizer
         );
     }
 
-    public function cannot(Subject|Role $owner, array $permissions, Junction $junction = Junction::Or): bool
+    public function cannot(Subject $subject, array $permissions, Junction $junction = Junction::Or): bool
     {
-        return !$this->can($owner, $permissions, $junction);
+        return !$this->can($subject, $permissions, $junction);
     }
 
     public function is(Subject $subject, array $roles, Junction $junction = Junction::Or): bool

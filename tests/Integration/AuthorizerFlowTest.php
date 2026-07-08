@@ -56,7 +56,6 @@ final class AuthorizerFlowTest extends TestCase
 
         foreach ($cases['permission_evaluation'] as $name => $case) {
             yield $name => [
-                $case['owner'],
                 $case['method'],
                 $case['junction'],
                 $case['codes'],
@@ -118,7 +117,7 @@ final class AuthorizerFlowTest extends TestCase
         );
 
         $this->authorizer = new Authorizer(
-            new PermissionEntryProvider($subjectPermissions, $subjectRoles, $rolePermissions),
+            new PermissionEntryProvider($subjectPermissions, $subjectRoles),
             new RoleEntryProvider($subjectRoles),
         );
 
@@ -129,13 +128,11 @@ final class AuthorizerFlowTest extends TestCase
     public function test_can_returns_false_for_empty_permission_list(): void
     {
         self::assertFalse($this->authorizer->can($this->subject, []));
-        self::assertFalse($this->authorizer->can($this->role, []));
     }
 
     public function test_cannot_returns_true_for_empty_permission_list(): void
     {
         self::assertTrue($this->authorizer->cannot($this->subject, []));
-        self::assertTrue($this->authorizer->cannot($this->role, []));
     }
 
     public function test_subject_can_use_a_direct_permission(): void
@@ -188,34 +185,6 @@ final class AuthorizerFlowTest extends TestCase
         self::assertTrue($this->authorizer->cannot($this->subject, ['posts.edit']));
     }
 
-    public function test_role_owner_can_use_its_permissions(): void
-    {
-        $permission = $this->permission('posts.edit');
-
-        $this->granter->grant($this->role, $permission);
-
-        self::assertTrue($this->authorizer->can($this->role, ['posts.edit']));
-        self::assertFalse($this->authorizer->cannot($this->role, ['posts.edit']));
-    }
-
-    public function test_role_owner_cannot_when_permission_is_missing(): void
-    {
-        self::assertFalse($this->authorizer->can($this->role, ['posts.edit']));
-        self::assertTrue($this->authorizer->cannot($this->role, ['posts.edit']));
-    }
-
-    public function test_role_owner_cannot_after_permission_is_revoked(): void
-    {
-        $permission = $this->permission('posts.edit');
-
-        $this->granter->grant($this->role, $permission);
-
-        $this->revoker->revoke($this->role, $permission);
-
-        self::assertFalse($this->authorizer->can($this->role, ['posts.edit']));
-        self::assertTrue($this->authorizer->cannot($this->role, ['posts.edit']));
-    }
-
     public function test_grant_throws_when_permission_does_not_exist_in_the_catalog(): void
     {
         $phantom = new TestPermission(999, 'phantom.perm', 'Phantom');
@@ -234,7 +203,6 @@ final class AuthorizerFlowTest extends TestCase
 
     #[DataProvider('permissionEvaluationCases')]
     public function test_permission_evaluation(
-        string   $owner,
         string   $method,
         Junction $junction,
         array    $codes,
@@ -266,9 +234,7 @@ final class AuthorizerFlowTest extends TestCase
             $this->granter->grant($this->subject, $this->role);
         }
 
-        $target = $owner === 'role' ? $this->role : $this->subject;
-
-        self::assertSame($expected, $this->authorizer->{$method}($target, $codes, $junction));
+        self::assertSame($expected, $this->authorizer->{$method}($this->subject, $codes, $junction));
     }
 
     public function test_is_returns_false_for_empty_role_list(): void

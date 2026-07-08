@@ -7,7 +7,6 @@ use Vaened\Sentinel\Authorization\Junction;
 return [
     'permission_evaluation' => [
         'subject can with and when all permissions exist' => [
-            'owner' => 'subject',
             'method' => 'can',
             'junction' => Junction::And,
             'codes' => ['posts.edit', 'posts.delete'],
@@ -18,7 +17,6 @@ return [
             'expected' => true,
         ],
         'subject can with and when one permission is missing' => [
-            'owner' => 'subject',
             'method' => 'can',
             'junction' => Junction::And,
             'codes' => ['posts.edit', 'posts.delete'],
@@ -29,7 +27,6 @@ return [
             'expected' => false,
         ],
         'subject can with or when one permission exists' => [
-            'owner' => 'subject',
             'method' => 'can',
             'junction' => Junction::Or,
             'codes' => ['posts.edit', 'posts.delete'],
@@ -40,7 +37,6 @@ return [
             'expected' => true,
         ],
         'subject can with or when no permissions exist' => [
-            'owner' => 'subject',
             'method' => 'can',
             'junction' => Junction::Or,
             'codes' => ['posts.publish', 'posts.delete'],
@@ -51,7 +47,6 @@ return [
             'expected' => false,
         ],
         'subject cannot with and when one permission is missing' => [
-            'owner' => 'subject',
             'method' => 'cannot',
             'junction' => Junction::And,
             'codes' => ['posts.edit', 'posts.delete'],
@@ -62,7 +57,6 @@ return [
             'expected' => true,
         ],
         'subject cannot with and when all permissions exist' => [
-            'owner' => 'subject',
             'method' => 'cannot',
             'junction' => Junction::And,
             'codes' => ['posts.edit', 'posts.delete'],
@@ -73,7 +67,6 @@ return [
             'expected' => false,
         ],
         'subject cannot with or when one permission exists' => [
-            'owner' => 'subject',
             'method' => 'cannot',
             'junction' => Junction::Or,
             'codes' => ['posts.edit', 'posts.delete'],
@@ -84,7 +77,6 @@ return [
             'expected' => false,
         ],
         'subject cannot with or when no permissions exist' => [
-            'owner' => 'subject',
             'method' => 'cannot',
             'junction' => Junction::Or,
             'codes' => ['posts.publish', 'posts.delete'],
@@ -94,52 +86,7 @@ return [
             'assign_role' => false,
             'expected' => true,
         ],
-        'role can with and when all permissions exist' => [
-            'owner' => 'role',
-            'method' => 'can',
-            'junction' => Junction::And,
-            'codes' => ['posts.edit', 'posts.delete'],
-            'subject_allowed' => [],
-            'subject_denied' => [],
-            'role_permissions' => ['posts.edit', 'posts.delete'],
-            'assign_role' => false,
-            'expected' => true,
-        ],
-        'role can with and when one permission is missing' => [
-            'owner' => 'role',
-            'method' => 'can',
-            'junction' => Junction::And,
-            'codes' => ['posts.edit', 'posts.delete'],
-            'subject_allowed' => [],
-            'subject_denied' => [],
-            'role_permissions' => ['posts.edit'],
-            'assign_role' => false,
-            'expected' => false,
-        ],
-        'role can with or when one permission exists' => [
-            'owner' => 'role',
-            'method' => 'can',
-            'junction' => Junction::Or,
-            'codes' => ['posts.edit', 'posts.publish'],
-            'subject_allowed' => [],
-            'subject_denied' => [],
-            'role_permissions' => ['posts.edit'],
-            'assign_role' => false,
-            'expected' => true,
-        ],
-        'role can with or when no permissions exist' => [
-            'owner' => 'role',
-            'method' => 'can',
-            'junction' => Junction::Or,
-            'codes' => ['posts.publish', 'posts.delete'],
-            'subject_allowed' => [],
-            'subject_denied' => [],
-            'role_permissions' => [],
-            'assign_role' => false,
-            'expected' => false,
-        ],
         'subject deny overrides inherited permission in and checks' => [
-            'owner' => 'subject',
             'method' => 'can',
             'junction' => Junction::And,
             'codes' => ['users.delete'],

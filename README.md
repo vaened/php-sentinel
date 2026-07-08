@@ -107,12 +107,11 @@ The entry providers are concrete core services. They compose repositories and re
 
 - **PermissionEntryProvider**
     - Service: [`PermissionEntryProvider`](src/Authorization/PermissionEntryProvider.php)
-    - Encodes the effective precedence of permissions.
+    - Encodes the effective precedence of permissions for a subject.
     - Invariants:
         - it only returns codes that were requested;
-        - for a subject, direct permissions are resolved first and missing codes are completed through role grants;
-        - **deny overrides inherited grant**: a direct denial on the subject overrides any permission inherited from a role;
-        - for a role, effective permissions are the role's direct permissions.
+        - direct subject permissions are resolved first, and missing codes are completed through role grants;
+        - **deny overrides inherited grant**: a direct denial on the subject overrides any permission inherited from a role.
 
 - **RoleEntryProvider**
     - Service: [`RoleEntryProvider`](src/Authorization/RoleEntryProvider.php)
@@ -130,14 +129,14 @@ The entry providers are concrete core services. They compose repositories and re
 ## Authorizer
 
 [`Authorizer`](src/Authorization/Authorizer.php) is the read gate. It combines a `PermissionEntryProvider` and a `RoleEntryProvider` and
-answers boolean questions about a `Subject` or a `Role`. It is constructed once with both providers and is then ready to answer `can`,
-`cannot`, `is`, and `isnt` at any time.
+answers boolean questions about a `Subject`. It is constructed once with both providers and is then ready to answer `can`, `cannot`,
+`is`, and `isnt` at any time.
 
 ### `can()`
 
-Returns `true` when the owner has at least one of the requested permissions, or all of them when you pass `Junction::And`.
+Returns `true` when the subject has at least one of the requested permissions, or all of them when you pass `Junction::And`.
 
-- `$owner`: `Subject|Role` — the entity being evaluated.
+- `$subject`: `Subject` — the subject being evaluated.
 - `$permissions`: `array<string>` — the permission codes to evaluate. Always an array, never a bare string.
 - `$junction`: `Junction` (default: `Junction::Or`) — the combinator.
 
@@ -147,8 +146,7 @@ Inverse of `can()`. Same signature.
 
 ### `is()`
 
-Returns `true` when the subject has at least one of the requested roles, or all of them when you pass `Junction::And`. Unlike `can`, it only
-accepts `Subject` as an owner, not `Role`.
+Returns `true` when the subject has at least one of the requested roles, or all of them when you pass `Junction::And`.
 
 - `$subject`: `Subject` — the subject being evaluated.
 - `$roles`: `array<string>` — the role codes to evaluate.
