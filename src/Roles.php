@@ -16,6 +16,7 @@ use Override;
 
 class Roles extends Authorizations
 {
+    #[Override]
     public static function type(): string
     {
         return Role::class;

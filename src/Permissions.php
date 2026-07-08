@@ -16,6 +16,7 @@ use Override;
 
 class Permissions extends Authorizations
 {
+    #[Override]
     public static function type(): string
     {
         return Permission::class;

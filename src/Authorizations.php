@@ -14,8 +14,13 @@ namespace Vaened\Sentinel;
 
 use Vaened\Support\Types\SecureList;
 
-abstract class Authorizations extends SecureList
+class Authorizations extends SecureList
 {
+    public static function type(): string
+    {
+        return Authorization::class;
+    }
+
     public function codes(): array
     {
         return $this->map(static fn(Authorization $authorization): string => $authorization->code())->values();
