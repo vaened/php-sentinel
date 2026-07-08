@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Repositories;
 
+use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Subject;
-use Vaened\Sentinel\SubjectPermission;
 use Vaened\Sentinel\SubjectPermissions;
 
 interface SubjectPermissionRepository
@@ -24,9 +24,9 @@ interface SubjectPermissionRepository
 
     public function exists(int|string $permissionId): bool;
 
-    public function create(Subject $subject, SubjectPermission ...$permissions): void;
+    public function create(Subject $subject, SubjectPermissionSnapshot ...$permissions): void;
 
-    public function update(Subject $subject, SubjectPermission ...$permissions): void;
+    public function update(Subject $subject, SubjectPermissionSnapshot ...$permissions): void;
 
-    public function remove(Subject $subject, SubjectPermission ...$permissions): void;
+    public function remove(Subject $subject, SubjectPermissionSnapshot ...$permissions): void;
 }

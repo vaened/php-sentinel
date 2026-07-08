@@ -74,7 +74,7 @@ final readonly class Granter extends Operator
             }
 
             if ($assignment->isDenied()) {
-                $toUpdate[] = new SubjectPermissionSnapshot($assignment->permissionId(), $assignment->code());
+                $toUpdate[] = SubjectPermissionSnapshot::from($permission);
             }
         }
 

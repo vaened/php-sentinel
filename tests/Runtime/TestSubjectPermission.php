@@ -25,6 +25,15 @@ final class TestSubjectPermission implements SubjectPermission
     {
     }
 
+    public static function copy(SubjectPermission $permission): self
+    {
+        return new self(
+            $permission->permissionId(),
+            $permission->code(),
+            $permission->isDenied(),
+        );
+    }
+
     public static function from(Permission $permission, bool $denied = false): self
     {
         return new self(

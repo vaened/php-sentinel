@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Tests\Runtime\Repositories;
 
 use Vaened\Sentinel\Identifiers;
+use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Subject;
 use Vaened\Sentinel\SubjectPermission;
@@ -48,25 +49,21 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
         return new SubjectPermissions(array_values($this->items[Identifiers::value($subject->id())] ?? []));
     }
 
-    public function create(Subject $subject, SubjectPermission ...$permissions): void
+    public function create(Subject $subject, SubjectPermissionSnapshot ...$permissions): void
     {
         foreach ($permissions as $permission) {
-            $this->items[Identifiers::value($subject->id())][$permission->code()] = $permission instanceof TestSubjectPermission
-                ? $permission
-                : new TestSubjectPermission($permission->permissionId(), $permission->code(), $permission->isDenied());
+            $this->items[Identifiers::value($subject->id())][$permission->code()] = TestSubjectPermission::copy($permission);
         }
     }
 
-    public function update(Subject $subject, SubjectPermission ...$permissions): void
+    public function update(Subject $subject, SubjectPermissionSnapshot ...$permissions): void
     {
         foreach ($permissions as $permission) {
-            $this->items[Identifiers::value($subject->id())][$permission->code()] = $permission instanceof TestSubjectPermission
-                ? $permission
-                : new TestSubjectPermission($permission->permissionId(), $permission->code(), $permission->isDenied());
+            $this->items[Identifiers::value($subject->id())][$permission->code()] = TestSubjectPermission::copy($permission);
         }
     }
 
-    public function remove(Subject $subject, SubjectPermission ...$permissions): void
+    public function remove(Subject $subject, SubjectPermissionSnapshot ...$permissions): void
     {
         foreach ($permissions as $permission) {
             unset($this->items[Identifiers::value($subject->id())][$permission->code()]);

@@ -52,7 +52,7 @@ final readonly class Denier extends Operator
             }
 
             if (!$assignment->isDenied()) {
-                $toUpdate[] = new SubjectPermissionSnapshot($assignment->permissionId(), $assignment->code(), true);
+                $toUpdate[] = SubjectPermissionSnapshot::from($permission, true);
             }
         }
 
