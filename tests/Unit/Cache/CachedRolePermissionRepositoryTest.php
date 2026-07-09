@@ -43,7 +43,7 @@ final class CachedRolePermissionRepositoryTest extends CacheTestCase
         self::assertSame(['documents.create'], $cached->lookup($role, 'documents.create')->codes());
         self::assertSame(['documents.create'], $cached->allOf($role)->codes());
         self::assertTrue($cached->exists(20));
-        self::assertSame(1, $this->cacheVersion($cache));
+        self::assertSame(1, $cache->currentVersion());
     }
 
     public function test_create_invalidates_the_cache_after_delegating(): void
@@ -61,7 +61,7 @@ final class CachedRolePermissionRepositoryTest extends CacheTestCase
 
         $cached->create($role, $permission);
 
-        self::assertSame(2, $this->cacheVersion($cache));
+        self::assertSame(2, $cache->currentVersion());
     }
 
     public function test_remove_invalidates_the_cache_after_delegating(): void
@@ -79,6 +79,6 @@ final class CachedRolePermissionRepositoryTest extends CacheTestCase
 
         $cached->remove($role, $permission);
 
-        self::assertSame(2, $this->cacheVersion($cache));
+        self::assertSame(2, $cache->currentVersion());
     }
 }

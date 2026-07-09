@@ -47,7 +47,7 @@ final class CachedPermissionRepositoryTest extends CacheTestCase
         self::assertSame($permission, $cached->create('documents.create', 'Create Documents'));
         $cached->update(20, 'Create Documents', 'Allows document creation');
 
-        self::assertSame(1, $this->cacheVersion($cache));
+        self::assertSame(1, $cache->currentVersion());
     }
 
     public function test_remove_invalidates_the_cache_after_delegating_to_the_source_repository(): void
@@ -62,6 +62,6 @@ final class CachedPermissionRepositoryTest extends CacheTestCase
 
         $cached->remove(20);
 
-        self::assertSame(2, $this->cacheVersion($cache));
+        self::assertSame(2, $cache->currentVersion());
     }
 }

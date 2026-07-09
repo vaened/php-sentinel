@@ -49,11 +49,6 @@ abstract class CacheTestCase extends TestCase
         return $this->cache;
     }
 
-    protected function cacheVersion(AuthorizationCacheStore $cache): int
-    {
-        return (int)$this->store->get($this->cachePrefix() . ':version', 1);
-    }
-
     protected function projectionCache(
         SubjectRoleRepository|null       $roles = null,
         SubjectPermissionRepository|null $permissions = null,
@@ -98,12 +93,5 @@ abstract class CacheTestCase extends TestCase
     ): SubjectPermissionSnapshot
     {
         return new SubjectPermissionSnapshot($id, $code, $isDenied);
-    }
-
-    private function cachePrefix(): string
-    {
-        return (new \ReflectionProperty(AuthorizationCacheStore::class, 'settings'))
-            ->getValue($this->cache)
-            ->prefix;
     }
 }

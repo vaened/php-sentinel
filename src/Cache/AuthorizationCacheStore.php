@@ -48,6 +48,11 @@ final readonly class AuthorizationCacheStore
         $this->cache->set($this->versionKey(), $this->version() + 1);
     }
 
+    public function currentVersion(): int
+    {
+        return $this->version();
+    }
+
     private function namespaced(string $key): string
     {
         return sprintf('%s:%s', $this->namespace(), $key);

@@ -69,11 +69,11 @@ final class AuthorizationCacheStoreTest extends CacheTestCase
     {
         $cache = new AuthorizationCacheStore($this->store, $this->extractSettings());
 
-        self::assertSame(1, $this->cacheVersion($cache));
+        self::assertSame(1, $cache->currentVersion());
 
         $cache->invalidate();
 
-        self::assertSame(2, $this->cacheVersion($cache));
+        self::assertSame(2, $cache->currentVersion());
     }
 
     public function test_put_and_get_round_trip_preserves_arrays(): void
