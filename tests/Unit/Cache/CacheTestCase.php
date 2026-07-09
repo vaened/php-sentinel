@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
 use Vaened\Sentinel\Cache\AuthorizationCacheStore;
+use Vaened\Sentinel\Cache\Stores\Psr16AuthorizationCacheStore;
 use Vaened\Sentinel\Cache\CacheSettings;
 use Vaened\Sentinel\Cache\SubjectAuthorizationProjectionCache;
 use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
@@ -38,7 +39,7 @@ abstract class CacheTestCase extends TestCase
         parent::setUp();
 
         $this->store = new InMemoryCache();
-        $this->cache = new AuthorizationCacheStore(
+        $this->cache = new Psr16AuthorizationCacheStore(
             $this->store,
             new CacheSettings(prefix: uniqid('authorization-test-', true)),
         );

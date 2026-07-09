@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
-use Vaened\Sentinel\Cache\AuthorizationCacheStore;
 use Vaened\Sentinel\Cache\CacheSettings;
+use Vaened\Sentinel\Cache\Stores\Psr16AuthorizationCacheStore;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Tests\Runtime\InMemoryCache;
 use Vaened\Sentinel\Tests\Runtime\TestSubject;
@@ -24,7 +24,7 @@ final class AuthorizationCacheStoreTest extends TestCase
     public function test_get_returns_null_when_driver_returns_value_with_mismatched_type(): void
     {
         $raw     = new InMemoryCache();
-        $cache   = new AuthorizationCacheStore($raw, new CacheSettings(prefix: 'sentinel'));
+        $cache   = new Psr16AuthorizationCacheStore($raw, new CacheSettings(prefix: 'sentinel'));
         $subject = new TestSubject(1);
 
         $raw->set('sentinel:v1:' . $cache->keyOf($subject), 'not-an-array');
@@ -36,7 +36,7 @@ final class AuthorizationCacheStoreTest extends TestCase
     public function test_get_returns_null_when_cached_payload_shape_is_invalid(): void
     {
         $raw     = new InMemoryCache();
-        $cache   = new AuthorizationCacheStore($raw, new CacheSettings(prefix: 'sentinel'));
+        $cache   = new Psr16AuthorizationCacheStore($raw, new CacheSettings(prefix: 'sentinel'));
         $subject = new TestSubject(1);
 
         $raw->set('sentinel:v1:' . $cache->keyOf($subject), ['roles' => 'nope', 'permissions' => []]);
@@ -49,7 +49,7 @@ final class AuthorizationCacheStoreTest extends TestCase
         $raw = new InMemoryCache();
         $raw->set('sentinel:version', 'not-an-int');
 
-        $cache   = new AuthorizationCacheStore($raw, new CacheSettings(prefix: 'sentinel'));
+        $cache   = new Psr16AuthorizationCacheStore($raw, new CacheSettings(prefix: 'sentinel'));
         $subject = new TestSubject(1);
 
         $cache->put($subject, new SubjectAuthorizationProjection([], []));
@@ -62,7 +62,7 @@ final class AuthorizationCacheStoreTest extends TestCase
         $raw = new InMemoryCache();
         $raw->set('sentinel:version', 0);
 
-        $cache   = new AuthorizationCacheStore($raw, new CacheSettings(prefix: 'sentinel'));
+        $cache   = new Psr16AuthorizationCacheStore($raw, new CacheSettings(prefix: 'sentinel'));
         $subject = new TestSubject(1);
 
         $cache->put($subject, new SubjectAuthorizationProjection([], []));
@@ -72,7 +72,7 @@ final class AuthorizationCacheStoreTest extends TestCase
 
     public function test_version_increments_when_invalidate_is_called(): void
     {
-        $cache = new AuthorizationCacheStore(new InMemoryCache(), new CacheSettings(prefix: 'sentinel'));
+        $cache = new Psr16AuthorizationCacheStore(new InMemoryCache(), new CacheSettings(prefix: 'sentinel'));
 
         self::assertSame(1, $cache->currentVersion());
 
@@ -83,7 +83,7 @@ final class AuthorizationCacheStoreTest extends TestCase
 
     public function test_put_and_get_round_trip_preserves_the_projection(): void
     {
-        $cache      = new AuthorizationCacheStore(new InMemoryCache(), new CacheSettings(prefix: 'sentinel'));
+        $cache      = new Psr16AuthorizationCacheStore(new InMemoryCache(), new CacheSettings(prefix: 'sentinel'));
         $subject    = new TestSubject(1);
         $projection = new SubjectAuthorizationProjection(
             ['admin'],
@@ -97,7 +97,7 @@ final class AuthorizationCacheStoreTest extends TestCase
 
     public function test_forget_removes_the_subject_projection(): void
     {
-        $cache   = new AuthorizationCacheStore(new InMemoryCache(), new CacheSettings(prefix: 'sentinel'));
+        $cache   = new Psr16AuthorizationCacheStore(new InMemoryCache(), new CacheSettings(prefix: 'sentinel'));
         $subject = new TestSubject(1);
 
         $cache->put($subject, new SubjectAuthorizationProjection([], []));
