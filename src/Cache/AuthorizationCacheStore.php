@@ -13,6 +13,9 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Cache;
 
 use Psr\SimpleCache\CacheInterface;
+use Vaened\Sentinel\Identifiers;
+use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
+use Vaened\Sentinel\Subject;
 
 final readonly class AuthorizationCacheStore
 {
@@ -22,25 +25,32 @@ final readonly class AuthorizationCacheStore
     ) {
     }
 
-    public function get(string $key, mixed $default = null): mixed
+    public function get(Subject $subject): SubjectAuthorizationProjection|null
     {
-        $value = $this->cache->get($this->namespaced($key), $default);
+        $value = $this->cache->get($this->namespaced($this->keyOf($subject)), null);
 
-        if ($default === null) {
-            return $value;
+        if (!is_array($value)) {
+            return null;
         }
 
-        return gettype($value) === gettype($default) ? $value : $default;
+        $roles = $value['roles'] ?? null;
+        $permissions = $value['permissions'] ?? null;
+
+        if (!is_array($roles) || !is_array($permissions)) {
+            return null;
+        }
+
+        return new SubjectAuthorizationProjection($roles, $permissions);
     }
 
-    public function put(string $key, mixed $value): void
+    public function put(Subject $subject, SubjectAuthorizationProjection $projection): void
     {
-        $this->cache->set($this->namespaced($key), $value, $this->settings->ttl);
+        $this->cache->set($this->namespaced($this->keyOf($subject)), $projection->toArray(), $this->settings->ttl);
     }
 
-    public function forget(string $key): void
+    public function forget(Subject $subject): void
     {
-        $this->cache->delete($this->namespaced($key));
+        $this->cache->delete($this->namespaced($this->keyOf($subject)));
     }
 
     public function invalidate(): void
@@ -51,6 +61,15 @@ final readonly class AuthorizationCacheStore
     public function currentVersion(): int
     {
         return $this->version();
+    }
+
+    public function keyOf(Subject $subject): string
+    {
+        return sprintf(
+            'subject:%s:%s:projection',
+            $subject::class,
+            Identifiers::value($subject->id()),
+        );
     }
 
     private function namespaced(string $key): string
@@ -66,6 +85,7 @@ final readonly class AuthorizationCacheStore
     private function version(): int
     {
         $value = $this->cache->get($this->versionKey(), 1);
+
         return is_int($value) && $value > 0 ? $value : 1;
     }
 

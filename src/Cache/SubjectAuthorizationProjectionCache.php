@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Cache;
 
-use Vaened\Sentinel\Identifiers;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjector;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
@@ -32,16 +31,7 @@ final readonly class SubjectAuthorizationProjectionCache
 
     public function load(Subject $subject): ?SubjectAuthorizationProjection
     {
-        $cached = $this->store->get($this->keyOf($subject), []);
-
-        if (empty($cached)) {
-            return null;
-        }
-
-        return new SubjectAuthorizationProjection(
-            $cached['roles'] ?? [],
-            $cached['permissions'] ?? [],
-        );
+        return $this->store->get($subject);
     }
 
     public function loadOrBuild(Subject $subject): SubjectAuthorizationProjection
@@ -51,12 +41,12 @@ final readonly class SubjectAuthorizationProjectionCache
 
     public function save(Subject $subject, SubjectAuthorizationProjection $projection): void
     {
-        $this->store->put($this->keyOf($subject), $projection->toArray());
+        $this->store->put($subject, $projection);
     }
 
     public function forget(Subject $subject): void
     {
-        $this->store->forget($this->keyOf($subject));
+        $this->store->forget($subject);
     }
 
     public function bumpVersion(): void
@@ -104,14 +94,5 @@ final readonly class SubjectAuthorizationProjectionCache
         $this->save($subject, $projection);
 
         return $projection;
-    }
-
-    private function keyOf(Subject $subject): string
-    {
-        return sprintf(
-            'subject:%s:%s:projection',
-            $subject::class,
-            Identifiers::value($subject->id()),
-        );
     }
 }
