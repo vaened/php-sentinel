@@ -5,16 +5,6 @@
 
 Framework-agnostic authorization core for PHP 8.4+.
 
-## Installation
-
-```bash
-composer require vaened/php-sentinel
-```
-
-Requires PHP 8.4 or higher. Its only dependency is `vaened/support`.
-
-## Quick start
-
 ```php
 // Registry: handled by a seeder or your admin UI
 $admin = $roleRegistry->create('admin', 'Administrator');
@@ -36,6 +26,14 @@ $authorizer->can($user, ['posts.edit']);   // false
 $revoker->revoke($user, $edit);
 $authorizer->can($user, ['posts.edit']);   // true again
 ```
+
+## Installation
+
+```bash
+composer require vaened/php-sentinel
+```
+
+Requires PHP 8.4 or higher. Its only dependency is `vaened/support`.
 
 The example assumes concrete model and persistence implementations are already wired in your application bootstrap.
 
