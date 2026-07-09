@@ -122,6 +122,152 @@ The entry providers are concrete core services. They compose repositories and re
     - Resolves which requested role codes are effectively assigned to the subject.
     - It does not define precedence rules.
 
+## Caching the authorization checks
+
+Calls to `can`, `cannot`, `is`, and `isnt` are the hot path of any authorization system. Sentinel provides an optional cache layer
+that avoids recomputing a subject's effective authorization projection on every check.
+
+### What gets cached
+
+Sentinel caches the **effective authorization projection of a subject**: the assigned roles and the state (granted / denied) of each
+applicable permission, whether direct or inherited through a role. That projection is built once per subject and then reused on every
+subsequent `can` / `is` check.
+
+**What the cache does NOT do**:
+
+- It does not cache the role or permission catalog. Those entities are cold data. If you remove roles or permissions from the catalog,
+  global invalidation causes projections to be rebuilt on the next access.
+- It does not cache catalog-to-catalog relations (`role → permission`) for the same reason.
+- It does not cache repository `exists()` calls. Those are point validation operations, not part of the hot path.
+
+### Decisions you have to make
+
+Before wiring the layer, there are three operational decisions you need to make:
+
+1. **Provide a PSR-16 driver.** The cache layer is built on top of any
+   [`Psr\SimpleCache\CacheInterface`](https://www.php-fig.org/psr/psr-16/) implementation — Redis, Memcached, APCu, file, whatever you
+   already use. **Without a driver, there is no cache.** If your framework already gives you a PSR-16 driver (Laravel, Symfony, etc.),
+   use it.
+2. **Choose a unique `prefix` per application.** Keys are stored as `prefix:...` in the driver. If two applications share the same
+   PSR-16 driver (common in multi-tenant setups), they need different prefixes. Suggested convention: `app_name:sentinel`.
+3. **Understand what the default `ttl` does.** Sentinel applies a default `ttl` of **12 hours**
+   ([`CacheSettings::DEFAULT_TTL_IN_SECONDS`](src/Cache/CacheSettings.php)). A projection lives for exactly that long from the moment it
+   is first captured — **it is not renewed on every read**: it is only renewed when it is rebuilt. In practice:
+
+    - If the projection is queried within 12 hours of being captured, it is served from cache.
+    - If more than 12 hours pass, the next query rebuilds the projection (a single database hit) and starts a new 12-hour window.
+    - An inactive subject leaves its projection orphaned; the driver releases it after the TTL. This keeps cache memory from growing
+      without bound if the driver does not have its own eviction policy.
+
+   Pass `ttl: null` if you want projections to never expire by time and prefer to manage cleanup through an external mechanism.
+
+### How to wire it up
+
+First, choose how to construct the factory. Then use that factory to wrap your five base repositories.
+
+#### Using the bundled PSR-16 store
+
+If you already have a driver compatible with [`Psr\SimpleCache\CacheInterface`](https://www.php-fig.org/psr/psr-16/), this is the direct
+path:
+
+```php
+use Vaened\Sentinel\Cache\CacheSettings;
+use Vaened\Sentinel\Cache\SentinelCacheFactory;
+
+$factory = SentinelCacheFactory::from(
+    driver:   $psr16Driver,
+    settings: new CacheSettings(prefix: 'my_app:sentinel'),
+);
+```
+
+#### Using your own authorization cache store
+
+If you need a different storage or invalidation strategy, you can implement
+[`AuthorizationCacheStore`](src/Cache/AuthorizationCacheStore.php) and hand it to the factory:
+
+```php
+use Vaened\Sentinel\Cache\AuthorizationCacheStore;
+use Vaened\Sentinel\Cache\SentinelCacheFactory;
+
+$factory = SentinelCacheFactory::as(new MyCustomCacheStore(...));
+```
+
+#### Building the cached repositories
+
+Once you have the factory, wrap your five base repositories and get a
+[`CachedRepositories`](src/Cache/CachedRepositories.php):
+
+```php
+$cached = $factory->build(
+    roles:              $myRoleRepo,
+    permissions:        $myPermissionRepo,
+    rolePermissions:    $myRolePermissionRepo,
+    subjectRoles:       $mySubjectRoleRepo,
+    subjectPermissions: $mySubjectPermissionRepo,
+);
+
+$cached->roleRepository();
+$cached->permissionRepository();
+$cached->rolePermissionRepository();
+$cached->subjectRoleRepository();
+$cached->subjectPermissionRepository();
+```
+
+The returned repositories **implement the same interfaces as the base ones**. Your consumer code does not change: you pass
+`$cached->subjectRoleRepository()` where you used to pass `$mySubjectRoleRepo`.
+
+### Authorization cache store
+
+[`AuthorizationCacheStore`](src/Cache/AuthorizationCacheStore.php) is the contract that encapsulates projection storage, global
+invalidation, per-subject invalidation, and construction of the effective cache key.
+
+Sentinel includes a default implementation based on PSR-16:
+[`Psr16AuthorizationCacheStore`](src/Cache/Stores/Psr16AuthorizationCacheStore.php).
+
+You can create your own implementation if you need:
+
+- a different invalidation policy;
+- a different namespace or versioning strategy;
+- integration with tags, events, or framework-specific mechanisms;
+- finer control over how orphaned entries are cleaned up.
+
+The main limitation of the default PSR-16 implementation is that, when you call `invalidate()`, previous projections stop being read
+immediately, but remain orphaned and continue occupying space in the driver until their TTL expires.
+
+### Invalidating manually
+
+The factory does not expose the internal invalidation services. If you need to invalidate manually (for example, in an artisan command,
+after a large migration, or when a specific subject changed roles), instantiate `Psr16AuthorizationCacheStore` separately with the same
+driver and the same settings:
+
+```php
+use Vaened\Sentinel\Cache\CacheSettings;
+use Vaened\Sentinel\Cache\Stores\Psr16AuthorizationCacheStore;
+
+$store = new Psr16AuthorizationCacheStore(
+    cache:    $psr16Driver,
+    settings: new CacheSettings(prefix: 'my_app:sentinel'),
+);
+
+$store->invalidate();           // bumps the global version
+$store->forget($subject);       // invalidates one specific subject
+```
+
+> **Important:** database mutations performed outside Sentinel operators (direct SQL queries, other processes, improvised seeds) do not
+> invalidate the cache automatically. If that happens, call `invalidate()` or `forget()` manually.
+
+### Inspecting the cache
+
+If you inspect your PSR-16 driver with an external tool (Redis Commander, APCu GUI, etc.), you will see keys in this format:
+
+```
+{prefix}:version                                # global version counter
+{prefix}:v{N}:subject:{class}:{id}:projection   # one subject projection
+```
+
+`{N}` is the active namespace version. Every time you call `invalidate()`, all projections move to `v{N+1}` and the previous ones become
+orphaned (they are no longer read, and the driver eventually clears them).
+
 ## Implementation references
 
 - Reference wiring: [`tests/Integration/AuthorizerFlowTest.php`](tests/Integration/AuthorizerFlowTest.php)
