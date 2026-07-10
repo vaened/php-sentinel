@@ -10,21 +10,15 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Vaened\Sentinel\Cache\Authorizations;
+namespace Vaened\Sentinel\Projection;
 
 use Vaened\Sentinel\Authorization;
 
-readonly class CachedAuthorization implements Authorization
+final readonly class ProjectionAuthorization implements Authorization
 {
     public function __construct(
-        protected string $code,
-    )
-    {
-    }
-
-    public static function from(string $code): static
-    {
-        return new static($code);
+        private string $code,
+    ) {
     }
 
     public function code(): string

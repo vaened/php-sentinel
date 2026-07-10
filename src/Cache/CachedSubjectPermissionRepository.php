@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Cache;
 
-use Vaened\Sentinel\Cache\Authorizations\CachedSubjectPermission;
 use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
+use Vaened\Sentinel\Projection\ProjectionSubjectPermission;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository as SubjectPermissionRepositoryContract;
 use Vaened\Sentinel\Subject;
@@ -35,10 +35,7 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
             return new SubjectPermissions([]);
         }
 
-        $permissions = $this->projections->loadOrBuild($subject)->permissions();
-        $matched     = array_intersect_key($permissions, array_flip($codes));
-
-        return new SubjectPermissions(self::restore($matched));
+        return $this->projections->loadOrBuild($subject)->permissionsOf($codes);
     }
 
     public function exists(int|string $permissionId): bool
@@ -48,9 +45,7 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
 
     public function allOf(Subject $subject): SubjectPermissions
     {
-        $permissions = $this->projections->loadOrBuild($subject)->permissions();
-
-        return new SubjectPermissions(self::restore($permissions));
+        return $this->projections->loadOrBuild($subject)->permissions();
     }
 
     public function create(Subject $subject, SubjectPermissionSnapshot ...$permissions): void
@@ -87,18 +82,11 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
         SubjectPermissionSnapshot      $permission,
     ): SubjectAuthorizationProjection
     {
-        $permissions                      = $projection->permissions();
-        $permissions[$permission->code()] = SubjectPermissionState::fromBoolean($permission->isDenied())->value;
-
-        return new SubjectAuthorizationProjection($projection->roles(), $permissions);
-    }
-
-    private static function restore(array $permissions): array
-    {
-        return array_map(
-            fn(string $code, int $state) => CachedSubjectPermission::from($code, SubjectPermissionState::from($state)),
-            array_keys($permissions),
-            array_values($permissions),
+        return $projection->override(
+            new ProjectionSubjectPermission(
+                $permission->code(),
+                SubjectPermissionState::fromBoolean($permission->isDenied()),
+            ),
         );
     }
 }

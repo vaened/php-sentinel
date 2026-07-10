@@ -13,9 +13,7 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
 use Vaened\Sentinel\Cache\CachedSubjectPermissionRepository;
-use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
-use Vaened\Sentinel\SubjectPermissionState;
 use Vaened\Sentinel\SubjectPermissions;
 
 final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
@@ -62,7 +60,7 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
                    ->with($subject, $createUsers);
 
         $projections = $this->projectionCache();
-        $projections->save($subject, new SubjectAuthorizationProjection([], ['users.read' => SubjectPermissionState::Direct->value]));
+        $projections->save($subject, $this->projection([], [$readUsers]));
 
         $cached = new CachedSubjectPermissionRepository(
             $repository,
@@ -80,7 +78,7 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
         self::assertSame([
             'users.read'   => 1,
             'users.create' => 1,
-        ], $projection?->permissions());
+        ], $projection?->toArray()['permissions']);
     }
 
     public function test_update_overwrites_the_cached_permission_state_without_reloading_the_source_repository(): void
@@ -97,7 +95,7 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
                    ->with($subject, $deniedPermission);
 
         $projections = $this->projectionCache();
-        $projections->save($subject, new SubjectAuthorizationProjection([], ['users.read' => SubjectPermissionState::Direct->value]));
+        $projections->save($subject, $this->projection([], [$permission]));
 
         $cached = new CachedSubjectPermissionRepository(
             $repository,

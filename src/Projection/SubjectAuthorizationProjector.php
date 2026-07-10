@@ -15,6 +15,8 @@ namespace Vaened\Sentinel\Projection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Subject;
+use Vaened\Sentinel\Authorizations;
+use Vaened\Sentinel\SubjectPermissions;
 use Vaened\Sentinel\SubjectPermissionState;
 
 final readonly class SubjectAuthorizationProjector
@@ -27,17 +29,21 @@ final readonly class SubjectAuthorizationProjector
 
     public function project(Subject $subject): SubjectAuthorizationProjection
     {
-        $roles = $this->roles->allOf($subject)->codes();
-        $permissions = [];
-
-        foreach ($this->permissions->allOf($subject) as $permission) {
-            $permissions[$permission->code()] = $permission->state()->value;
-        }
+        $subjectPermissions = $this->permissions->allOf($subject);
+        $roles              = new Authorizations(array_map(
+            static fn($role): ProjectionAuthorization => new ProjectionAuthorization($role->code()),
+            $this->roles->allOf($subject)->values(),
+        ));
+        $permissions = $subjectPermissions->values();
+        $known       = $subjectPermissions->codes();
 
         foreach ($this->roles->grants($subject) as $permission) {
-            $permissions[$permission->code()] ??= SubjectPermissionState::Inherited->value;
+            if (!in_array($permission->code(), $known, true)) {
+                $permissions[] = new ProjectionSubjectPermission($permission->code(), SubjectPermissionState::Inherited);
+                $known[]       = $permission->code();
+            }
         }
 
-        return new SubjectAuthorizationProjection($roles, $permissions);
+        return new SubjectAuthorizationProjection($roles, new SubjectPermissions($permissions));
     }
 }

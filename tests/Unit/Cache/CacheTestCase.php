@@ -12,16 +12,19 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
+use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Cache\AuthorizationCacheStore;
-use Vaened\Sentinel\Cache\Stores\Psr16AuthorizationCacheStore;
 use Vaened\Sentinel\Cache\CacheSettings;
+use Vaened\Sentinel\Cache\Stores\Psr16AuthorizationCacheStore;
 use Vaened\Sentinel\Cache\SubjectAuthorizationProjectionCache;
 use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Permission;
+use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Subject;
+use Vaened\Sentinel\SubjectPermissions;
 use Vaened\Sentinel\Tests\Runtime\InMemoryCache;
 use Vaened\Sentinel\Tests\Runtime\TestPermission;
 use Vaened\Sentinel\Tests\Runtime\TestRole;
@@ -94,5 +97,13 @@ abstract class CacheTestCase extends TestCase
     ): SubjectPermissionSnapshot
     {
         return new SubjectPermissionSnapshot($id, $code, $isDenied);
+    }
+
+    protected function projection(array $roles = [], array $permissions = []): SubjectAuthorizationProjection
+    {
+        return new SubjectAuthorizationProjection(
+            new Authorizations($roles),
+            new SubjectPermissions($permissions),
+        );
     }
 }

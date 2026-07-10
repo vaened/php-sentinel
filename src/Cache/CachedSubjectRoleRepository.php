@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Cache;
 
 use Vaened\Sentinel\Authorizations;
-use Vaened\Sentinel\Cache\Authorizations\CachedAuthorization;
 use Vaened\Sentinel\Repositories\RolePermissionRepository as RolePermissionRepositoryContract;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository as SubjectRoleRepositoryContract;
 use Vaened\Sentinel\Role as RoleContract;
@@ -35,13 +34,7 @@ final readonly class CachedSubjectRoleRepository implements SubjectRoleRepositor
             return new Authorizations([]);
         }
 
-        $projection = $this->projections->loadOrBuild($subject);
-        $assigned   = array_values(array_intersect($projection->roles(), $codes));
-
-        return new Authorizations(array_map(
-            fn(string $code) => CachedAuthorization::from($code),
-            $assigned,
-        ));
+        return $this->projections->loadOrBuild($subject)->rolesOf($codes);
     }
 
     public function grants(Subject $subject, ?array $codes = null): Authorizations
@@ -56,12 +49,7 @@ final readonly class CachedSubjectRoleRepository implements SubjectRoleRepositor
 
     public function allOf(Subject $subject): Authorizations
     {
-        $projection = $this->projections->loadOrBuild($subject);
-
-        return new Authorizations(array_map(
-            fn(string $code) => CachedAuthorization::from($code),
-            $projection->roles(),
-        ));
+        return $this->projections->loadOrBuild($subject)->roles();
     }
 
     public function create(Subject $subject, RoleContract ...$roles): void
@@ -72,7 +60,7 @@ final readonly class CachedSubjectRoleRepository implements SubjectRoleRepositor
 
         foreach ($roles as $role) {
             $effectiveCodes = $this->rolePermissions->allOf($role)->codes();
-            $projection     = $this->projections->withRoleAdded($projection, $role, $effectiveCodes);
+            $projection     = $projection->integrate($role, $effectiveCodes);
         }
 
         $this->projections->save($subject, $projection);

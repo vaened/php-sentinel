@@ -12,9 +12,13 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
+use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Cache\CacheSettings;
 use Vaened\Sentinel\Cache\Stores\Psr16AuthorizationCacheStore;
+use Vaened\Sentinel\Projection\ProjectionAuthorization;
+use Vaened\Sentinel\Projection\ProjectionSubjectPermission;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
+use Vaened\Sentinel\SubjectPermissions;
 use Vaened\Sentinel\SubjectPermissionState;
 use Vaened\Sentinel\Tests\Runtime\InMemoryCache;
 use Vaened\Sentinel\Tests\Runtime\TestSubject;
@@ -53,7 +57,7 @@ final class AuthorizationCacheStoreTest extends TestCase
         $cache   = new Psr16AuthorizationCacheStore($raw, new CacheSettings(prefix: 'sentinel'));
         $subject = new TestSubject(1);
 
-        $cache->put($subject, new SubjectAuthorizationProjection([], []));
+        $cache->put($subject, $this->projection());
 
         self::assertArrayHasKey('sentinel:v1:' . $cache->keyOf($subject), $this->inspectItems($raw));
     }
@@ -66,7 +70,7 @@ final class AuthorizationCacheStoreTest extends TestCase
         $cache   = new Psr16AuthorizationCacheStore($raw, new CacheSettings(prefix: 'sentinel'));
         $subject = new TestSubject(1);
 
-        $cache->put($subject, new SubjectAuthorizationProjection([], []));
+        $cache->put($subject, $this->projection());
 
         self::assertArrayHasKey('sentinel:v1:' . $cache->keyOf($subject), $this->inspectItems($raw));
     }
@@ -86,9 +90,9 @@ final class AuthorizationCacheStoreTest extends TestCase
     {
         $cache      = new Psr16AuthorizationCacheStore(new InMemoryCache(), new CacheSettings(prefix: 'sentinel'));
         $subject    = new TestSubject(1);
-        $projection = new SubjectAuthorizationProjection(
-            ['admin'],
-            ['users.read' => SubjectPermissionState::Direct->value],
+        $projection = $this->projection(
+            [new ProjectionAuthorization('admin')],
+            [new ProjectionSubjectPermission('users.read', SubjectPermissionState::Direct)],
         );
 
         $cache->put($subject, $projection);
@@ -101,7 +105,7 @@ final class AuthorizationCacheStoreTest extends TestCase
         $cache   = new Psr16AuthorizationCacheStore(new InMemoryCache(), new CacheSettings(prefix: 'sentinel'));
         $subject = new TestSubject(1);
 
-        $cache->put($subject, new SubjectAuthorizationProjection([], []));
+        $cache->put($subject, $this->projection());
         $cache->forget($subject);
 
         self::assertNull($cache->get($subject));
@@ -112,5 +116,13 @@ final class AuthorizationCacheStoreTest extends TestCase
         $reflection = new \ReflectionProperty(InMemoryCache::class, 'items');
 
         return $reflection->getValue($cache);
+    }
+
+    private function projection(array $roles = [], array $permissions = []): SubjectAuthorizationProjection
+    {
+        return new SubjectAuthorizationProjection(
+            new Authorizations($roles),
+            new SubjectPermissions($permissions),
+        );
     }
 }

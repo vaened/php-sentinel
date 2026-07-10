@@ -10,23 +10,17 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Vaened\Sentinel\Cache\Authorizations;
+namespace Vaened\Sentinel\Projection;
 
 use Vaened\Sentinel\SubjectPermission;
 use Vaened\Sentinel\SubjectPermissionState;
 
-final readonly class CachedSubjectPermission implements SubjectPermission
+final readonly class ProjectionSubjectPermission implements SubjectPermission
 {
     public function __construct(
         private string                 $code,
         private SubjectPermissionState $state,
-    )
-    {
-    }
-
-    public static function from(string $code, SubjectPermissionState $state): self
-    {
-        return new self($code, $state);
+    ) {
     }
 
     public function code(): string

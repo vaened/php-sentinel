@@ -16,9 +16,7 @@ use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjector;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
-use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Subject;
-use Vaened\Sentinel\SubjectPermissionState;
 
 final readonly class SubjectAuthorizationProjectionCache
 {
@@ -48,35 +46,6 @@ final readonly class SubjectAuthorizationProjectionCache
     public function forget(Subject $subject): void
     {
         $this->store->forget($subject);
-    }
-
-    public function bumpVersion(): void
-    {
-        $this->store->invalidate();
-    }
-
-    public function withRoleAdded(
-        SubjectAuthorizationProjection $projection,
-        Role                           $role,
-        array                          $effectivePermissionCodes,
-    ): SubjectAuthorizationProjection
-    {
-        $roles = $projection->roles();
-
-        if (in_array($role->code(), $roles, true)) {
-            return $projection;
-        }
-
-        $roles[]     = $role->code();
-        $permissions = $projection->permissions();
-
-        foreach ($effectivePermissionCodes as $code) {
-            if (!array_key_exists($code, $permissions)) {
-                $permissions[$code] = SubjectPermissionState::Inherited->value;
-            }
-        }
-
-        return new SubjectAuthorizationProjection($roles, $permissions);
     }
 
     public function build(Subject $subject): SubjectAuthorizationProjection

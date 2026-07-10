@@ -14,7 +14,6 @@ namespace Vaened\Sentinel\Tests\Unit\Cache;
 
 use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Cache\CachedSubjectRoleRepository;
-use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\RolePermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\SubjectPermissionState;
@@ -24,7 +23,8 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
     public function test_lookup_and_all_of_are_resolved_from_the_cached_projection(): void
     {
         $subject    = $this->cachedSubject();
-        $projection = new SubjectAuthorizationProjection(['cashier'], []);
+        $cashier    = $this->cachedRole(10, 'cashier', 'Cashier');
+        $projection = $this->projection([$cashier]);
 
         $repository      = $this->createStub(SubjectRoleRepository::class);
         $rolePermissions = $this->createStub(RolePermissionRepository::class);
@@ -69,7 +69,7 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
         $subject         = $this->cachedSubject();
         $role            = $this->cachedRole(10, 'cashier', 'Cashier');
         $createDocuments = $this->cachedPermission(20, 'documents.create', 'Create Documents');
-        $initial         = new SubjectAuthorizationProjection([], []);
+        $initial         = $this->projection();
 
         $repository = $this->createMock(SubjectRoleRepository::class);
         $repository->expects(self::once())
@@ -93,8 +93,9 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
 
         $cached->create($subject, $role);
 
-        self::assertSame(['cashier'], $projections->load($subject)?->roles());
-        self::assertSame(['documents.create' => SubjectPermissionState::Inherited->value], $projections->load($subject)?->permissions());
+        self::assertSame(['cashier'], $projections->load($subject)?->roles()->codes());
+        self::assertSame(['documents.create' => SubjectPermissionState::Inherited->value],
+            $projections->load($subject)?->toArray()['permissions']);
     }
 
     public function test_remove_forgets_the_subject_projection_and_reloads_it_on_the_next_lookup(): void
@@ -118,7 +119,7 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
         $projections     = $this->projectionCache(
             roles: $repository,
         );
-        $projections->save($subject, new SubjectAuthorizationProjection(['cashier'], []));
+        $projections->save($subject, $this->projection([$role]));
 
         $cached = new CachedSubjectRoleRepository(
             $repository,

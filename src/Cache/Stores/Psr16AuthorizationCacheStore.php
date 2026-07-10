@@ -35,14 +35,7 @@ final readonly class Psr16AuthorizationCacheStore implements AuthorizationCacheS
             return null;
         }
 
-        $roles = $value['roles'] ?? null;
-        $permissions = $value['permissions'] ?? null;
-
-        if (!is_array($roles) || !is_array($permissions)) {
-            return null;
-        }
-
-        return new SubjectAuthorizationProjection($roles, $permissions);
+        return SubjectAuthorizationProjection::fromArray($value);
     }
 
     public function put(Subject $subject, SubjectAuthorizationProjection $projection): void
