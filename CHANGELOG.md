@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-07-09
+
+### Fixed
+
+- `RoleEntryProvider::for()` rejected `CachedAuthorization` instances returned by `CachedSubjectRoleRepository::lookup()` because
+  the closure was typed against `Role`. The closure now accepts `Authorization`, which both `Role` and `CachedAuthorization`
+  satisfy. This was a latent bug exposed when the cache layer started delivering slim read-only authorizations instead of full
+  roles.
+
+[0.4.1]: https://github.com/vaened/php-sentinel/compare/v0.4.0...v0.4.1
+
 ## [0.4.0] - 2026-07-09
 
 ### Added
