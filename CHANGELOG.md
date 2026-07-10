@@ -5,6 +5,31 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-07-09
+
+### Added
+
+- `SubjectPermissionState` enum with the explicit authorization states `Denied`, `Direct`, and `Inherited`, plus helper methods for
+  mapping persisted booleans and resolving effective granted/owned semantics.
+- Regression coverage for the cached `deny()` flow when a permission is inherited through a role.
+
+### Changed
+
+- `SubjectPermission` no longer exposes `isDenied(): bool`. It now exposes `state(): SubjectPermissionState` so implementations and
+  adapters can distinguish direct assignments from inherited ones through a single contract.
+- Subject-authorization projections and cached subject-permission adapters now preserve the full permission state instead of collapsing
+  everything into a granted/denied boolean view.
+- `Denier`, `Granter`, and the authorization-entry resolution flow now consume `SubjectPermissionState` directly when deciding how to
+  interpret subject permissions.
+
+### Fixed
+
+- Denying a permission through `CachedSubjectPermissionRepository` now creates a direct subject denial when the permission only exists as
+  an inherited role grant. Previously, the inherited cached permission could be mistaken for an existing direct assignment, so the denial
+  was not persisted.
+
+[0.5.0]: https://github.com/vaened/php-sentinel/compare/v0.4.1...v0.5.0
+
 ## [0.4.1] - 2026-07-09
 
 ### Fixed
