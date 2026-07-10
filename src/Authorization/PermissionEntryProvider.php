@@ -33,7 +33,7 @@ final readonly class PermissionEntryProvider
         $entries = [];
 
         foreach ($this->subjectPermissions->lookup($subject, ...$permissions) as $permission) {
-            $entries[$permission->code()] = new PermissionEntry($permission->code(), $permission->isDenied());
+            $entries[$permission->code()] = new PermissionEntry($permission->code(), $permission->state()->isDenied());
         }
 
         $missing = array_values(array_filter(

@@ -17,6 +17,7 @@ use Vaened\Sentinel\Cache\CachedSubjectRoleRepository;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\RolePermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
+use Vaened\Sentinel\SubjectPermissionState;
 
 final class CachedSubjectRoleRepositoryTest extends CacheTestCase
 {
@@ -93,7 +94,7 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
         $cached->create($subject, $role);
 
         self::assertSame(['cashier'], $projections->load($subject)?->roles());
-        self::assertSame(['documents.create' => true], $projections->load($subject)?->permissions());
+        self::assertSame(['documents.create' => SubjectPermissionState::Inherited->value], $projections->load($subject)?->permissions());
     }
 
     public function test_remove_forgets_the_subject_projection_and_reloads_it_on_the_next_lookup(): void

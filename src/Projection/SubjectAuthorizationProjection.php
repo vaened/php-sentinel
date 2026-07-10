@@ -18,7 +18,7 @@ final readonly class SubjectAuthorizationProjection implements JsonSerializable
 {
     /**
      * @param list<string> $roles
-     * @param array<string, bool> $permissions
+     * @param array<string, int> $permissions
      */
     public function __construct(
         protected array $roles,
@@ -35,7 +35,7 @@ final readonly class SubjectAuthorizationProjection implements JsonSerializable
     }
 
     /**
-     * @return array<string, bool>
+     * @return array<string, int>
      */
     public function permissions(): array
     {
@@ -43,7 +43,7 @@ final readonly class SubjectAuthorizationProjection implements JsonSerializable
     }
 
     /**
-     * @return array{roles: list<string>, permissions: array<string, bool>}
+     * @return array{roles: list<string>, permissions: array<string, int>}
      */
     public function toArray(): array
     {
@@ -54,7 +54,7 @@ final readonly class SubjectAuthorizationProjection implements JsonSerializable
     }
 
     /**
-     * @return array{roles: list<string>, permissions: array<string, bool>}
+     * @return array{roles: list<string>, permissions: array<string, int>}
      */
     public function jsonSerialize(): array
     {

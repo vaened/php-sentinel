@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Tests\Unit\Projection;
 
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
+use Vaened\Sentinel\SubjectPermissionState;
 use Vaened\Sentinel\Tests\TestCase;
 
 final class SubjectAuthorizationProjectionTest extends TestCase
@@ -21,23 +22,23 @@ final class SubjectAuthorizationProjectionTest extends TestCase
     {
         $projection = new SubjectAuthorizationProjection(
             ['admin', 'editor'],
-            ['posts.edit' => true, 'posts.delete' => false],
+            ['posts.edit' => SubjectPermissionState::Direct->value, 'posts.delete' => SubjectPermissionState::Denied->value],
         );
 
         self::assertSame(['admin', 'editor'], $projection->roles());
-        self::assertSame(['posts.edit' => true, 'posts.delete' => false], $projection->permissions());
+        self::assertSame(['posts.edit' => 1, 'posts.delete' => 0], $projection->permissions());
     }
 
     public function test_to_array_returns_the_expected_structure(): void
     {
         $projection = new SubjectAuthorizationProjection(
             ['admin'],
-            ['posts.edit' => true],
+            ['posts.edit' => SubjectPermissionState::Direct->value],
         );
 
         self::assertSame([
             'roles' => ['admin'],
-            'permissions' => ['posts.edit' => true],
+            'permissions' => ['posts.edit' => 1],
         ], $projection->toArray());
     }
 
@@ -45,7 +46,7 @@ final class SubjectAuthorizationProjectionTest extends TestCase
     {
         $projection = new SubjectAuthorizationProjection(
             ['admin'],
-            ['posts.edit' => true, 'posts.delete' => false],
+            ['posts.edit' => SubjectPermissionState::Direct->value, 'posts.delete' => SubjectPermissionState::Denied->value],
         );
 
         self::assertSame($projection->toArray(), $projection->jsonSerialize());

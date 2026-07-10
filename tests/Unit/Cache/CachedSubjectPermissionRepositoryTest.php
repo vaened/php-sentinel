@@ -15,6 +15,7 @@ namespace Vaened\Sentinel\Tests\Unit\Cache;
 use Vaened\Sentinel\Cache\CachedSubjectPermissionRepository;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
+use Vaened\Sentinel\SubjectPermissionState;
 use Vaened\Sentinel\SubjectPermissions;
 
 final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
@@ -42,8 +43,8 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
         $second = $cached->lookup($subject, 'users.read', 'users.delete');
 
         self::assertSame(['users.read', 'users.delete'], $first->codes());
-        self::assertFalse($first->find('users.read')?->isDenied());
-        self::assertTrue($first->find('users.delete')?->isDenied());
+        self::assertFalse($first->find('users.read')?->state()->isDenied());
+        self::assertTrue($first->find('users.delete')?->state()->isDenied());
         self::assertSame($first->codes(), $second->codes());
     }
 
@@ -61,7 +62,7 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
                    ->with($subject, $createUsers);
 
         $projections = $this->projectionCache();
-        $projections->save($subject, new SubjectAuthorizationProjection([], ['users.read' => true]));
+        $projections->save($subject, new SubjectAuthorizationProjection([], ['users.read' => SubjectPermissionState::Direct->value]));
 
         $cached = new CachedSubjectPermissionRepository(
             $repository,
@@ -75,10 +76,10 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
         $projection  = $projections->load($subject);
 
         self::assertSame(['users.create'], $permissions->codes());
-        self::assertFalse($permissions->find('users.create')?->isDenied());
+        self::assertFalse($permissions->find('users.create')?->state()->isDenied());
         self::assertSame([
-            'users.read'   => true,
-            'users.create' => true,
+            'users.read'   => 1,
+            'users.create' => 1,
         ], $projection?->permissions());
     }
 
@@ -96,7 +97,7 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
                    ->with($subject, $deniedPermission);
 
         $projections = $this->projectionCache();
-        $projections->save($subject, new SubjectAuthorizationProjection([], ['users.read' => true]));
+        $projections->save($subject, new SubjectAuthorizationProjection([], ['users.read' => SubjectPermissionState::Direct->value]));
 
         $cached = new CachedSubjectPermissionRepository(
             $repository,
@@ -106,7 +107,7 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
         $cached->lookup($subject, 'users.read');
         $cached->update($subject, $deniedPermission);
 
-        self::assertTrue($cached->lookup($subject, 'users.read')->find('users.read')?->isDenied());
+        self::assertTrue($cached->lookup($subject, 'users.read')->find('users.read')?->state()->isDenied());
     }
 
     public function test_remove_forgets_the_subject_projection_and_reloads_it_on_the_next_lookup(): void

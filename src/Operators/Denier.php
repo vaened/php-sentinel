@@ -46,12 +46,12 @@ final readonly class Denier extends Operator
         foreach ($available as $permission) {
             $assignment = $assigned->find($permission->code());
 
-            if (null === $assignment) {
+            if (null === $assignment || $assignment->state()->isInherited()) {
                 $toCreate[] = SubjectPermissionSnapshot::from($permission, true);
                 continue;
             }
 
-            if (!$assignment->isDenied()) {
+            if ($assignment->state()->isDirect()) {
                 $toUpdate[] = SubjectPermissionSnapshot::from($permission, true);
             }
         }

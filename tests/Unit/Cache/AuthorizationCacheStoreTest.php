@@ -15,6 +15,7 @@ namespace Vaened\Sentinel\Tests\Unit\Cache;
 use Vaened\Sentinel\Cache\CacheSettings;
 use Vaened\Sentinel\Cache\Stores\Psr16AuthorizationCacheStore;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
+use Vaened\Sentinel\SubjectPermissionState;
 use Vaened\Sentinel\Tests\Runtime\InMemoryCache;
 use Vaened\Sentinel\Tests\Runtime\TestSubject;
 use Vaened\Sentinel\Tests\TestCase;
@@ -87,7 +88,7 @@ final class AuthorizationCacheStoreTest extends TestCase
         $subject    = new TestSubject(1);
         $projection = new SubjectAuthorizationProjection(
             ['admin'],
-            ['users.read' => true],
+            ['users.read' => SubjectPermissionState::Direct->value],
         );
 
         $cache->put($subject, $projection);

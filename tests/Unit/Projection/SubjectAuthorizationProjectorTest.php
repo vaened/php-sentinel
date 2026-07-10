@@ -17,6 +17,7 @@ use Vaened\Sentinel\Projection\SubjectAuthorizationProjector;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Roles;
+use Vaened\Sentinel\SubjectPermissionState;
 use Vaened\Sentinel\SubjectPermissions;
 use Vaened\Sentinel\Tests\Runtime\TestPermission;
 use Vaened\Sentinel\Tests\Runtime\TestRole;
@@ -79,7 +80,7 @@ final class SubjectAuthorizationProjectorTest extends TestCase
             ->with($subject)
             ->willReturn(new SubjectPermissions([
                 new TestSubjectPermission(100, 'posts.edit'),
-                new TestSubjectPermission(200, 'posts.delete', denied: true),
+                new TestSubjectPermission(200, 'posts.delete', SubjectPermissionState::Denied),
             ]));
 
         $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
@@ -87,8 +88,8 @@ final class SubjectAuthorizationProjectorTest extends TestCase
         self::assertSame([
             'roles' => ['admin', 'editor'],
             'permissions' => [
-                'posts.edit' => true,
-                'posts.delete' => false,
+                'posts.edit' => 1,
+                'posts.delete' => 0,
             ],
         ], $projection->toArray());
     }
@@ -126,9 +127,9 @@ final class SubjectAuthorizationProjectorTest extends TestCase
         self::assertSame([
             'roles' => ['admin'],
             'permissions' => [
-                'users.delete' => true,
-                'posts.edit' => true,
-                'posts.publish' => true,
+                'users.delete' => 1,
+                'posts.edit' => 2,
+                'posts.publish' => 2,
             ],
         ], $projection->toArray());
     }
@@ -159,7 +160,7 @@ final class SubjectAuthorizationProjectorTest extends TestCase
             ->method('allOf')
             ->with($subject)
             ->willReturn(new SubjectPermissions([
-                new TestSubjectPermission(400, 'posts.edit', denied: true),
+                new TestSubjectPermission(400, 'posts.edit', SubjectPermissionState::Denied),
             ]));
 
         $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
@@ -167,8 +168,8 @@ final class SubjectAuthorizationProjectorTest extends TestCase
         self::assertSame([
             'roles' => ['admin'],
             'permissions' => [
-                'posts.edit' => false,
-                'posts.publish' => true,
+                'posts.edit' => 0,
+                'posts.publish' => 2,
             ],
         ], $projection->toArray());
     }

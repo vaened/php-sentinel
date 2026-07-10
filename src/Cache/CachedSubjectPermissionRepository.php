@@ -18,6 +18,7 @@ use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository as SubjectPermissionRepositoryContract;
 use Vaened\Sentinel\Subject;
 use Vaened\Sentinel\SubjectPermissions;
+use Vaened\Sentinel\SubjectPermissionState;
 
 final readonly class CachedSubjectPermissionRepository implements SubjectPermissionRepositoryContract
 {
@@ -87,7 +88,7 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
     ): SubjectAuthorizationProjection
     {
         $permissions                      = $projection->permissions();
-        $permissions[$permission->code()] = !$permission->isDenied();
+        $permissions[$permission->code()] = SubjectPermissionState::fromBoolean($permission->isDenied())->value;
 
         return new SubjectAuthorizationProjection($projection->roles(), $permissions);
     }
@@ -95,7 +96,7 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
     private static function restore(array $permissions): array
     {
         return array_map(
-            fn(string $code, bool $granted) => CachedSubjectPermission::from($code, isDenied: !$granted),
+            fn(string $code, int $state) => CachedSubjectPermission::from($code, SubjectPermissionState::from($state)),
             array_keys($permissions),
             array_values($permissions),
         );

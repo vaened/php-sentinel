@@ -15,6 +15,7 @@ namespace Vaened\Sentinel\Projection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Subject;
+use Vaened\Sentinel\SubjectPermissionState;
 
 final readonly class SubjectAuthorizationProjector
 {
@@ -30,11 +31,11 @@ final readonly class SubjectAuthorizationProjector
         $permissions = [];
 
         foreach ($this->permissions->allOf($subject) as $permission) {
-            $permissions[$permission->code()] = !$permission->isDenied();
+            $permissions[$permission->code()] = $permission->state()->value;
         }
 
         foreach ($this->roles->grants($subject) as $permission) {
-            $permissions[$permission->code()] ??= true;
+            $permissions[$permission->code()] ??= SubjectPermissionState::Inherited->value;
         }
 
         return new SubjectAuthorizationProjection($roles, $permissions);

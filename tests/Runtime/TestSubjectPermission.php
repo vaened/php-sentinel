@@ -12,25 +12,27 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Runtime;
 
+use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Permission;
 use Vaened\Sentinel\SubjectPermission;
+use Vaened\Sentinel\SubjectPermissionState;
 
 final class TestSubjectPermission implements SubjectPermission
 {
     public function __construct(
-        protected int|string $permissionId,
-        protected string     $code,
-        protected bool       $denied = false,
+        protected int|string             $permissionId,
+        protected string                 $code,
+        protected SubjectPermissionState $state = SubjectPermissionState::Direct,
     )
     {
     }
 
-    public static function copy(SubjectPermission $permission): self
+    public static function copy(SubjectPermissionSnapshot $permission): self
     {
         return new self(
             $permission->permissionId(),
             $permission->code(),
-            $permission->isDenied(),
+            $permission->state(),
         );
     }
 
@@ -39,7 +41,7 @@ final class TestSubjectPermission implements SubjectPermission
         return new self(
             $permission->id(),
             $permission->code(),
-            $denied,
+            SubjectPermissionState::fromBoolean($denied),
         );
     }
 
@@ -53,18 +55,18 @@ final class TestSubjectPermission implements SubjectPermission
         return $this->code;
     }
 
-    public function isDenied(): bool
+    public function state(): SubjectPermissionState
     {
-        return $this->denied;
+        return $this->state;
     }
 
     public function deny(): void
     {
-        $this->denied = true;
+        $this->state = SubjectPermissionState::Denied;
     }
 
     public function allow(): void
     {
-        $this->denied = false;
+        $this->state = SubjectPermissionState::Direct;
     }
 }

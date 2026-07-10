@@ -14,5 +14,5 @@ namespace Vaened\Sentinel;
 
 interface SubjectPermission extends Authorization
 {
-    public function isDenied(): bool;
+    public function state(): SubjectPermissionState;
 }

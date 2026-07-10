@@ -17,6 +17,7 @@ use Vaened\Sentinel\Cache\SubjectAuthorizationProjectionCache;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
+use Vaened\Sentinel\SubjectPermissionState;
 use Vaened\Sentinel\SubjectPermissions;
 
 final class SubjectAuthorizationProjectionCacheTest extends CacheTestCase
@@ -55,8 +56,8 @@ final class SubjectAuthorizationProjectionCacheTest extends CacheTestCase
 
         self::assertSame(['cashier'], $first->roles());
         self::assertSame([
-            'documents.annul'  => false,
-            'documents.create' => true,
+            'documents.annul'  => 0,
+            'documents.create' => 2,
         ], $first->permissions());
         self::assertSame($first->toArray(), $second->toArray());
     }
@@ -102,7 +103,7 @@ final class SubjectAuthorizationProjectionCacheTest extends CacheTestCase
 
         $initial = new SubjectAuthorizationProjection(
             roles:       [],
-            permissions: ['documents.annul' => false],
+            permissions: ['documents.annul' => SubjectPermissionState::Denied->value],
         );
 
         $cache = new SubjectAuthorizationProjectionCache(
@@ -118,11 +119,13 @@ final class SubjectAuthorizationProjectionCacheTest extends CacheTestCase
         );
 
         self::assertSame(['admin'], $merged->roles());
-        self::assertFalse(
+        self::assertSame(
+            SubjectPermissionState::Denied->value,
             $merged->permissions()['documents.annul'],
             'A direct subject denial must NOT be reverted by role inheritance.',
         );
-        self::assertTrue(
+        self::assertSame(
+            SubjectPermissionState::Inherited->value,
             $merged->permissions()['users.read'],
             'A role-granted code that the subject had no direct entry for must be added.',
         );
@@ -134,7 +137,7 @@ final class SubjectAuthorizationProjectionCacheTest extends CacheTestCase
 
         $initial = new SubjectAuthorizationProjection(
             roles:       ['admin'],
-            permissions: ['users.read' => true],
+            permissions: ['users.read' => SubjectPermissionState::Direct->value],
         );
 
         $cache = new SubjectAuthorizationProjectionCache(
@@ -146,6 +149,6 @@ final class SubjectAuthorizationProjectionCacheTest extends CacheTestCase
         $result = $cache->withRoleAdded($initial, $admin, ['users.read']);
 
         self::assertSame(['admin'], $result->roles());
-        self::assertSame(['users.read' => true], $result->permissions());
+        self::assertSame(['users.read' => 1], $result->permissions());
     }
 }

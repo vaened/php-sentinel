@@ -23,6 +23,7 @@ use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Roles;
 use Vaened\Sentinel\Subject;
+use Vaened\Sentinel\SubjectPermissionState;
 
 final readonly class Granter extends Operator
 {
@@ -73,7 +74,7 @@ final readonly class Granter extends Operator
                 continue;
             }
 
-            if ($assignment->isDenied()) {
+            if ($assignment->state()->isDenied()) {
                 $toUpdate[] = SubjectPermissionSnapshot::from($permission);
             }
         }

@@ -14,6 +14,7 @@ namespace Vaened\Sentinel\Operators;
 
 use Vaened\Sentinel\Permission;
 use Vaened\Sentinel\SubjectPermission;
+use Vaened\Sentinel\SubjectPermissionState;
 
 readonly class SubjectPermissionSnapshot implements SubjectPermission
 {
@@ -43,5 +44,10 @@ readonly class SubjectPermissionSnapshot implements SubjectPermission
     public function isDenied(): bool
     {
         return $this->isDenied;
+    }
+
+    public function state(): SubjectPermissionState
+    {
+        return SubjectPermissionState::fromBoolean($this->isDenied);
     }
 }

@@ -13,19 +13,20 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Cache\Authorizations;
 
 use Vaened\Sentinel\SubjectPermission;
+use Vaened\Sentinel\SubjectPermissionState;
 
 final readonly class CachedSubjectPermission implements SubjectPermission
 {
     public function __construct(
-        private string $code,
-        private bool   $denied = false,
+        private string                 $code,
+        private SubjectPermissionState $state,
     )
     {
     }
 
-    public static function from(string $code, bool $isDenied): self
+    public static function from(string $code, SubjectPermissionState $state): self
     {
-        return new self($code, $isDenied);
+        return new self($code, $state);
     }
 
     public function code(): string
@@ -33,8 +34,8 @@ final readonly class CachedSubjectPermission implements SubjectPermission
         return $this->code;
     }
 
-    public function isDenied(): bool
+    public function state(): SubjectPermissionState
     {
-        return $this->denied;
+        return $this->state;
     }
 }

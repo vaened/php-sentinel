@@ -18,6 +18,7 @@ use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Subject;
+use Vaened\Sentinel\SubjectPermissionState;
 
 final readonly class SubjectAuthorizationProjectionCache
 {
@@ -71,7 +72,7 @@ final readonly class SubjectAuthorizationProjectionCache
 
         foreach ($effectivePermissionCodes as $code) {
             if (!array_key_exists($code, $permissions)) {
-                $permissions[$code] = true;
+                $permissions[$code] = SubjectPermissionState::Inherited->value;
             }
         }
 
