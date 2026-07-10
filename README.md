@@ -86,10 +86,12 @@ Repositories persist both the catalog and the relationships between subjects, ro
 - **RoleRepository**
     - Contract: [`RoleRepository`](src/Repositories/RoleRepository.php)
     - Stores role records with `id`, `code`, `name`, and `description`.
+    - `lookup(...)` returns the typed `Roles` collection (concrete `Role` instances).
 
 - **PermissionRepository**
     - Contract: [`PermissionRepository`](src/Repositories/PermissionRepository.php)
     - Stores permission records with `id`, `code`, `name`, and `description`.
+    - `lookup(...)` returns the typed `Permissions` collection (concrete `Permission` instances).
 
 - **SubjectRoleRepository**
     - Contract: [`SubjectRoleRepository`](src/Repositories/SubjectRoleRepository.php)
@@ -375,7 +377,7 @@ It accepts `Subject` or `Role` as owner.
 ## Registry
 
 [`PermissionRegistry`](src/Registry/PermissionRegistry.php) and [`RoleRegistry`](src/Registry/RoleRegistry.php) manage the registration
-operations for each entity: `create`, `update`, and `remove`.
+operations for each entity: `create`, `update`, `remove`, plus read helpers for administration (`lookup`, `find`).
 
 ```php
 $roleRegistry       = new RoleRegistry($roleRepository, $subjectRoleRepository);
@@ -389,6 +391,8 @@ $roleRegistry->remove($admin->id());
 - `create()` returns the entity with its assigned id. It throws `*AlreadyExists` when the code already exists.
 - `update()` operates by id. Passing `null` as description clears it.
 - `remove()` is idempotent: if the id does not exist, it makes no changes. If the entity is in use, it throws `*InUse`.
+- `lookup(array $codes)` returns the typed collection (`Roles` / `Permissions`) of the entities whose codes match.
+- `find(string $code)` returns the single entity matching the code, or `null` if no entity has that code.
 
 ## Errors
 
