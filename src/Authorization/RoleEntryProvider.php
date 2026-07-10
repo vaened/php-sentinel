@@ -12,15 +12,16 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Authorization;
 
+use Vaened\Sentinel\Authorization;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
-use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Subject;
 
 final readonly class RoleEntryProvider
 {
     public function __construct(
         protected SubjectRoleRepository $roles,
-    ) {
+    )
+    {
     }
 
     public function for(Subject $subject, string ...$roles): RoleEntries
@@ -30,7 +31,7 @@ final readonly class RoleEntryProvider
         }
 
         return new RoleEntries(array_map(
-            static fn(Role $role): RoleEntry => new RoleEntry($role->code()),
+            static fn(Authorization $role): RoleEntry => new RoleEntry($role->code()),
             $this->roles->lookup($subject, ...$roles)->values(),
         ));
     }
