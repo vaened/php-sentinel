@@ -5,6 +5,33 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-10
+
+### Added
+
+- `SubjectAuthorizationProjection::fromArray()` for restoring a validated typed projection from its flat cache payload.
+- `ProjectionAuthorization` and `ProjectionSubjectPermission` as the projection-owned authorization entries.
+
+### Changed
+
+- `SubjectRoleRepository::grants()` now accepts `?array $codes = null` instead of variadic codes. `null` resolves every permission
+  inherited through the subject's roles, an empty array resolves none, and a populated array remains a code filter.
+- `SubjectAuthorizationProjection` now keeps typed `Authorizations` and `SubjectPermissions` in memory. Its constructor accepts those
+  collections, while `toArray()` remains the flat serialization boundary for cache storage and external consumers.
+- Projection filtering and mutation now live on `SubjectAuthorizationProjection`: `rolesOf()`, `permissionsOf()`, `integrate()`, and
+  `override()` preserve the effective authorization state without exposing the cache payload to cached repositories.
+- The PSR-16 store and cached subject repositories now consume typed projections directly instead of rebuilding authorization objects
+  from primitive role and permission arrays.
+
+### Removed
+
+- `Cache\Authorizations\CachedAuthorization` and `Cache\Authorizations\CachedSubjectPermission`; their projection-specific
+  replacements live under `Projection`.
+- `SubjectAuthorizationProjectionCache::withRoleAdded()` and `bumpVersion()`. Role integration belongs to the projection, while global
+  invalidation remains an `AuthorizationCacheStore` concern.
+
+[0.6.0]: https://github.com/vaened/php-sentinel/compare/v0.5.0...v0.6.0
+
 ## [0.5.0] - 2026-07-09
 
 ### Added
@@ -64,7 +91,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.1] - 2026-07-08
 
 ### Changed
-- `Authorizations` is no longer abstract. Provides `type(): string` returning `Authorization::class` directly. Implementations of the relation repositories can return `new Authorizations([...])` without wrapping in `Roles`/`Permissions`. Subclasses (`Roles`, `Permissions`, `SubjectPermissions`) are unchanged.
+
+- `Authorizations` is no longer abstract. Provides `type(): string` returning `Authorization::class` directly. Implementations of the
+  relation repositories can return `new Authorizations([...])` without wrapping in `Roles`/`Permissions`. Subclasses (`Roles`,
+  `Permissions`, `SubjectPermissions`) are unchanged.
 
 [0.3.1]: https://github.com/vaened/php-sentinel/compare/v0.3.0...v0.3.1
 
