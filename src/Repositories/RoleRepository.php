@@ -12,12 +12,12 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Repositories;
 
-use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Role;
+use Vaened\Sentinel\Roles;
 
 interface RoleRepository
 {
-    public function lookup(string ...$codes): Authorizations;
+    public function lookup(string ...$codes): Roles;
 
     public function exists(int|string $id): bool;
 

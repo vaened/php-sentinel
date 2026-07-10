@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Cache;
 
-use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Permission;
+use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Repositories\PermissionRepository as PermissionRepositoryContract;
 
 final readonly class CachedPermissionRepository implements PermissionRepositoryContract
@@ -25,7 +25,7 @@ final readonly class CachedPermissionRepository implements PermissionRepositoryC
     {
     }
 
-    public function lookup(string ...$codes): Authorizations
+    public function lookup(string ...$codes): Permissions
     {
         return $this->repository->lookup(...$codes);
     }

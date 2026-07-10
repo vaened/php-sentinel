@@ -12,9 +12,9 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
-use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Cache\CachedRoleRepository;
 use Vaened\Sentinel\Repositories\RoleRepository;
+use Vaened\Sentinel\Roles;
 
 final class CachedRoleRepositoryTest extends CacheTestCase
 {
@@ -26,7 +26,7 @@ final class CachedRoleRepositoryTest extends CacheTestCase
         $repository->expects(self::once())
                    ->method('lookup')
                    ->with('cashier')
-                   ->willReturn(new Authorizations([$role]));
+                   ->willReturn(new Roles([$role]));
         $repository->expects(self::once())
                    ->method('exists')
                    ->with(10)

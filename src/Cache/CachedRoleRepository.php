@@ -12,19 +12,20 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Cache;
 
-use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Repositories\RoleRepository as RoleRepositoryContract;
 use Vaened\Sentinel\Role;
+use Vaened\Sentinel\Roles;
 
 final readonly class CachedRoleRepository implements RoleRepositoryContract
 {
     public function __construct(
-        private RoleRepositoryContract      $repository,
-        private AuthorizationCacheStore    $cache,
-    ) {
+        private RoleRepositoryContract  $repository,
+        private AuthorizationCacheStore $cache,
+    )
+    {
     }
 
-    public function lookup(string ...$codes): Authorizations
+    public function lookup(string ...$codes): Roles
     {
         return $this->repository->lookup(...$codes);
     }

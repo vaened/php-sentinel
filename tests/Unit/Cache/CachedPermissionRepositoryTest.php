@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
-use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Cache\CachedPermissionRepository;
+use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Repositories\PermissionRepository;
 
 final class CachedPermissionRepositoryTest extends CacheTestCase
@@ -26,7 +26,7 @@ final class CachedPermissionRepositoryTest extends CacheTestCase
         $repository->expects(self::once())
                    ->method('lookup')
                    ->with('documents.create')
-                   ->willReturn(new Authorizations([$permission]));
+                   ->willReturn(new Permissions([$permission]));
         $repository->expects(self::once())
                    ->method('exists')
                    ->with(20)
@@ -39,7 +39,7 @@ final class CachedPermissionRepositoryTest extends CacheTestCase
                    ->method('update')
                    ->with(20, 'Create Documents', 'Allows document creation');
 
-        $cache = $this->cacheStore();
+        $cache  = $this->cacheStore();
         $cached = new CachedPermissionRepository($repository, $cache);
 
         self::assertSame(['documents.create'], $cached->lookup('documents.create')->codes());
@@ -57,7 +57,7 @@ final class CachedPermissionRepositoryTest extends CacheTestCase
                    ->method('remove')
                    ->with(20);
 
-        $cache = $this->cacheStore();
+        $cache  = $this->cacheStore();
         $cached = new CachedPermissionRepository($repository, $cache);
 
         $cached->remove(20);
