@@ -16,6 +16,7 @@ use Vaened\Sentinel\Errors\PermissionAlreadyExists;
 use Vaened\Sentinel\Errors\PermissionInUse;
 use Vaened\Sentinel\Errors\PermissionNotFound;
 use Vaened\Sentinel\Permission;
+use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Repositories\PermissionRepository;
 use Vaened\Sentinel\Repositories\RolePermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
@@ -23,10 +24,11 @@ use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 final readonly class PermissionRegistry
 {
     public function __construct(
-        protected PermissionRepository $permissions,
+        protected PermissionRepository        $permissions,
         protected SubjectPermissionRepository $subjects,
-        protected RolePermissionRepository $roles,
-    ) {
+        protected RolePermissionRepository    $roles,
+    )
+    {
     }
 
     public function create(string $code, string $name, string|null $description = null): Permission
@@ -58,5 +60,15 @@ final readonly class PermissionRegistry
         }
 
         $this->permissions->remove($id);
+    }
+
+    public function lookup(array $codes): Permissions
+    {
+        return $this->permissions->lookup(...$codes);
+    }
+
+    public function find(string $code): Permission|null
+    {
+        return $this->permissions->lookup($code)->find($code);
     }
 }

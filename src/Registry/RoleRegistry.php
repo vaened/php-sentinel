@@ -18,13 +18,15 @@ use Vaened\Sentinel\Errors\RoleNotFound;
 use Vaened\Sentinel\Repositories\RoleRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
+use Vaened\Sentinel\Roles;
 
 final readonly class RoleRegistry
 {
     public function __construct(
-        protected RoleRepository $roles,
+        protected RoleRepository        $roles,
         protected SubjectRoleRepository $subjects,
-    ) {
+    )
+    {
     }
 
     public function create(string $code, string $name, string|null $description = null): Role
@@ -56,5 +58,15 @@ final readonly class RoleRegistry
         }
 
         $this->roles->remove($id);
+    }
+
+    public function lookup(array $codes): Roles
+    {
+        return $this->roles->lookup(...$codes);
+    }
+
+    public function find(string $code): Role|null
+    {
+        return $this->roles->lookup($code)->find($code);
     }
 }

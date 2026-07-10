@@ -15,6 +15,7 @@ namespace Vaened\Sentinel\Tests\Integration\Registry;
 use Vaened\Sentinel\Errors\PermissionAlreadyExists;
 use Vaened\Sentinel\Errors\PermissionInUse;
 use Vaened\Sentinel\Errors\PermissionNotFound;
+use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Registry\PermissionRegistry;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryPermissionRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRolePermissionRepository;
@@ -22,8 +23,6 @@ use Vaened\Sentinel\Tests\Runtime\Repositories\InMemorySubjectPermissionReposito
 use Vaened\Sentinel\Tests\Runtime\TestPermission;
 use Vaened\Sentinel\Tests\Runtime\TestRole;
 use Vaened\Sentinel\Tests\Runtime\TestSubject;
-use Vaened\Sentinel\Tests\Runtime\TestSubjectPermission;
-use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Tests\TestCase;
 
 final class PermissionRegistryTest extends TestCase
@@ -134,5 +133,32 @@ final class PermissionRegistryTest extends TestCase
         $this->registry->remove($permission->id());
 
         self::assertFalse($this->permissions->exists($permission->id()));
+    }
+
+    public function test_lookup_delegates_to_the_permission_repository(): void
+    {
+        $this->registry->create('users.read', 'Read Users');
+        $this->registry->create('users.write', 'Write Users');
+
+        $matched = $this->registry->lookup(['users.read', 'users.delete']);
+
+        self::assertSame(['users.read'], $matched->codes());
+    }
+
+    public function test_find_returns_the_permission_for_a_known_code(): void
+    {
+        $this->registry->create('users.read', 'Read Users');
+
+        $permission = $this->registry->find('users.read');
+
+        self::assertNotNull($permission);
+        self::assertSame('Read Users', $permission->name());
+    }
+
+    public function test_find_returns_null_when_code_is_unknown(): void
+    {
+        $this->registry->create('users.read', 'Read Users');
+
+        self::assertNull($this->registry->find('users.delete'));
     }
 }

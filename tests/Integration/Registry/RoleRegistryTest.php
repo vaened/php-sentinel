@@ -25,10 +25,11 @@ use Vaened\Sentinel\Tests\TestCase;
 
 final class RoleRegistryTest extends TestCase
 {
-    private InMemoryRoleRepository       $roles;
+    private InMemoryRoleRepository        $roles;
+
     private InMemorySubjectRoleRepository $subjectRoles;
 
-    private RoleRegistry $registry;
+    private RoleRegistry                  $registry;
 
     protected function setUp(): void
     {
@@ -112,5 +113,32 @@ final class RoleRegistryTest extends TestCase
         $this->registry->remove($role->id());
 
         self::assertFalse($this->roles->exists($role->id()));
+    }
+
+    public function test_lookup_delegates_to_the_role_repository(): void
+    {
+        $this->registry->create('admin', 'Administrator');
+        $this->registry->create('cashier', 'Cashier');
+
+        $matched = $this->registry->lookup(['admin', 'editor']);
+
+        self::assertSame(['admin'], $matched->codes());
+    }
+
+    public function test_find_returns_the_role_for_a_known_code(): void
+    {
+        $this->registry->create('admin', 'Administrator');
+
+        $role = $this->registry->find('admin');
+
+        self::assertNotNull($role);
+        self::assertSame('Administrator', $role->name());
+    }
+
+    public function test_find_returns_null_when_code_is_unknown(): void
+    {
+        $this->registry->create('admin', 'Administrator');
+
+        self::assertNull($this->registry->find('editor'));
     }
 }
