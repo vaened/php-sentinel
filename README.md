@@ -72,7 +72,12 @@ These contracts define the minimum model Sentinel needs to evaluate authorizatio
         - **SubjectPermission**
             - Contract: [`SubjectPermission`](src/SubjectPermission.php)
             - Represents a `subject ↔ permission` link.
-            - Provides `isDenied()` for direct overrides. The relation carries only the effective state of the link.
+            - Provides `state(): SubjectPermissionState`.
+            - State enum: [`SubjectPermissionState`](src/SubjectPermissionState.php)
+            - The state distinguishes:
+                - `Denied` — direct deny on the subject
+                - `Direct` — direct grant on the subject
+                - `Inherited` — grant inherited through a role
 
 ### Repositories
 
@@ -93,7 +98,8 @@ Repositories persist both the catalog and the relationships between subjects, ro
 - **SubjectPermissionRepository**
     - Contract: [`SubjectPermissionRepository`](src/Repositories/SubjectPermissionRepository.php)
     - Persists `subject ↔ permission` links.
-    - Each assignment exposes `isDenied()`. Writes receive `SubjectPermissionSnapshot` value objects.
+    - Persisted assignments resolve to `Denied` or `Direct`. `Inherited` is derived at runtime by Sentinel when a permission comes from a role.
+    - Writes receive `SubjectPermissionSnapshot` value objects.
 
 - **RolePermissionRepository**
     - Contract: [`RolePermissionRepository`](src/Repositories/RolePermissionRepository.php)
@@ -127,9 +133,15 @@ that avoids recomputing a subject's effective authorization projection on every 
 
 ### What gets cached
 
-Sentinel caches the **effective authorization projection of a subject**: the assigned roles and the state (granted / denied) of each
-applicable permission, whether direct or inherited through a role. That projection is built once per subject and then reused on every
-subsequent `can` / `is` check.
+Sentinel caches the **effective authorization projection of a subject**: the assigned roles and the state of each applicable permission,
+whether direct or inherited through a role. That projection is built once per subject and then reused on every subsequent `can` / `is`
+check.
+
+For cached permissions, Sentinel preserves three states:
+
+- `Denied` — direct deny on the subject
+- `Direct` — direct grant on the subject
+- `Inherited` — grant inherited through a role
 
 **What the cache does NOT do**:
 
