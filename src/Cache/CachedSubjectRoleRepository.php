@@ -44,9 +44,9 @@ final readonly class CachedSubjectRoleRepository implements SubjectRoleRepositor
         ));
     }
 
-    public function grants(Subject $subject, string ...$codes): Authorizations
+    public function grants(Subject $subject, ?array $codes = null): Authorizations
     {
-        return $this->repository->grants($subject, ...$codes);
+        return $this->repository->grants($subject, $codes);
     }
 
     public function exists(int|string $roleId): bool

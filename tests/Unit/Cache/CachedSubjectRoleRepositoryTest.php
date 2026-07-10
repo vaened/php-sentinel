@@ -49,7 +49,7 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
         $repository = $this->createMock(SubjectRoleRepository::class);
         $repository->expects(self::once())
                    ->method('grants')
-                   ->with($subject, 'documents.create', 'documents.annul')
+                   ->with($subject, ['documents.create', 'documents.annul'])
                    ->willReturn(new Authorizations([$permission]));
 
         $rolePermissions = $this->createMock(RolePermissionRepository::class);
@@ -61,7 +61,7 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
             $this->projectionCache(),
         );
 
-        self::assertSame(['documents.create'], $cached->grants($subject, 'documents.create', 'documents.annul')->codes());
+        self::assertSame(['documents.create'], $cached->grants($subject, ['documents.create', 'documents.annul'])->codes());
     }
 
     public function test_create_updates_the_cached_projection_using_the_role_permissions(): void

@@ -20,7 +20,7 @@ interface SubjectRoleRepository
 {
     public function lookup(Subject $subject, string ...$codes): Authorizations;
 
-    public function grants(Subject $subject, string ...$codes): Authorizations;
+    public function grants(Subject $subject, ?array $codes = null): Authorizations;
 
     public function allOf(Subject $subject): Authorizations;
 

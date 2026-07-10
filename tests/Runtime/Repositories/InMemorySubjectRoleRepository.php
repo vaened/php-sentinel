@@ -43,12 +43,20 @@ final class InMemorySubjectRoleRepository implements SubjectRoleRepository
         )));
     }
 
-    public function grants(Subject $subject, string ...$codes): Permissions
+    public function grants(Subject $subject, ?array $codes = null): Permissions
     {
+        if ($codes === []) {
+            return new Permissions([]);
+        }
+
         $permissions = [];
 
         foreach ($this->allOf($subject) as $role) {
-            foreach ($this->rolePermissions->lookup($role, ...$codes) as $permission) {
+            $grants = $codes === null
+                ? $this->rolePermissions->allOf($role)
+                : $this->rolePermissions->lookup($role, ...$codes);
+
+            foreach ($grants as $permission) {
                 $permissions[$permission->code()] = $permission;
             }
         }

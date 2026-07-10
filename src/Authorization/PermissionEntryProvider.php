@@ -45,7 +45,7 @@ final readonly class PermissionEntryProvider
             return new PermissionEntries(array_values($entries));
         }
 
-        foreach ($this->subjectRoles->grants($subject, ...$missing) as $permission) {
+        foreach ($this->subjectRoles->grants($subject, $missing) as $permission) {
             $entries[$permission->code()] = new PermissionEntry($permission->code());
         }
 
