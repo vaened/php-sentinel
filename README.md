@@ -94,12 +94,16 @@ Repositories persist both the catalog and the relationships between subjects, ro
 - **SubjectRoleRepository**
     - Contract: [`SubjectRoleRepository`](src/Repositories/SubjectRoleRepository.php)
     - Persists `subject ↔ role` links.
+    - `grants($subject, $codes)` resolves permissions inherited through the subject’s roles:
+        - `null` resolves every inherited permission.
+        - A populated array resolves only matching permission codes.
 
 - **SubjectPermissionRepository**
     - Contract: [`SubjectPermissionRepository`](src/Repositories/SubjectPermissionRepository.php)
     - Persists `subject ↔ permission` links.
-    - Persisted assignments resolve to `Denied` or `Direct`. `Inherited` is derived at runtime by Sentinel when a permission comes from a role.
-    - Writes receive `SubjectPermissionSnapshot` value objects.
+    - Persisted assignments resolve to `Denied` or `Direct`. `Inherited` is derived at runtime by Sentinel when a permission comes from a
+      role.
+        - Writes receive `SubjectPermissionSnapshot` value objects.
 
 - **RolePermissionRepository**
     - Contract: [`RolePermissionRepository`](src/Repositories/RolePermissionRepository.php)
@@ -230,6 +234,9 @@ The returned repositories **implement the same interfaces as the base ones**. Yo
 
 [`AuthorizationCacheStore`](src/Cache/AuthorizationCacheStore.php) is the contract that encapsulates projection storage, global
 invalidation, per-subject invalidation, and construction of the effective cache key.
+
+Stores receive a typed [`SubjectAuthorizationProjection`](src/Projection/SubjectAuthorizationProjection.php). Use `toArray()` when
+crossing a serialization boundary and `SubjectAuthorizationProjection::fromArray()` when restoring a payload into a projection.
 
 Sentinel includes a default implementation based on PSR-16:
 [`Psr16AuthorizationCacheStore`](src/Cache/Stores/Psr16AuthorizationCacheStore.php).
