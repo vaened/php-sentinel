@@ -17,6 +17,7 @@ use Vaened\Sentinel\Projection\ProjectionSubjectPermission;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository as SubjectPermissionRepositoryContract;
 use Vaened\Sentinel\Subject;
+use Vaened\Sentinel\SubjectPermission;
 use Vaened\Sentinel\SubjectPermissions;
 use Vaened\Sentinel\SubjectPermissionState;
 
@@ -35,7 +36,7 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
             return new SubjectPermissions([]);
         }
 
-        return $this->projections->loadOrBuild($subject)->permissionsOf($codes);
+        return $this->owned($this->projections->loadOrBuild($subject)->permissionsOf($codes));
     }
 
     public function exists(int|string $permissionId): bool
@@ -45,7 +46,7 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
 
     public function allOf(Subject $subject): SubjectPermissions
     {
-        return $this->projections->loadOrBuild($subject)->permissions();
+        return $this->owned($this->projections->loadOrBuild($subject)->permissions());
     }
 
     public function create(Subject $subject, SubjectPermissionSnapshot ...$permissions): void
@@ -88,5 +89,13 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
                 SubjectPermissionState::fromBoolean($permission->isDenied()),
             ),
         );
+    }
+
+    private function owned(SubjectPermissions $permissions): SubjectPermissions
+    {
+        return new SubjectPermissions(array_values(array_filter(
+            $permissions->values(),
+            static fn(SubjectPermission $permission): bool => $permission->state()->isOwned(),
+        )));
     }
 }
