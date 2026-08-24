@@ -24,7 +24,8 @@ final readonly class Psr16AuthorizationCacheStore implements AuthorizationCacheS
     public function __construct(
         private CacheInterface $cache,
         private CacheSettings  $settings,
-    ) {
+    )
+    {
     }
 
     public function get(Subject $subject): SubjectAuthorizationProjection|null
@@ -79,9 +80,16 @@ final readonly class Psr16AuthorizationCacheStore implements AuthorizationCacheS
 
     private function version(): int
     {
-        $value = $this->cache->get($this->versionKey(), 1);
+        $value = $this->cache->get($this->versionKey(), null);
 
-        return is_int($value) && $value > 0 ? $value : 1;
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+
+        $value = random_int(1, PHP_INT_MAX - 1);
+        $this->cache->set($this->versionKey(), $value);
+
+        return $value;
     }
 
     private function versionKey(): string

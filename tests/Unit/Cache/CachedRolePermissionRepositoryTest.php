@@ -37,13 +37,14 @@ final class CachedRolePermissionRepositoryTest extends CacheTestCase
                    ->with(20)
                    ->willReturn(true);
 
-        $cache  = $this->cacheStore();
-        $cached = new CachedRolePermissionRepository($repository, $cache);
+        $cache          = $this->cacheStore();
+        $cached         = new CachedRolePermissionRepository($repository, $cache);
+        $initialVersion = $cache->currentVersion();
 
         self::assertSame(['documents.create'], $cached->lookup($role, 'documents.create')->codes());
         self::assertSame(['documents.create'], $cached->allOf($role)->codes());
         self::assertTrue($cached->exists(20));
-        self::assertSame(1, $cache->currentVersion());
+        self::assertSame($initialVersion, $cache->currentVersion());
     }
 
     public function test_create_invalidates_the_cache_after_delegating(): void
@@ -56,12 +57,13 @@ final class CachedRolePermissionRepositoryTest extends CacheTestCase
                    ->method('create')
                    ->with($role, $permission);
 
-        $cache  = $this->cacheStore();
-        $cached = new CachedRolePermissionRepository($repository, $cache);
+        $cache          = $this->cacheStore();
+        $cached         = new CachedRolePermissionRepository($repository, $cache);
+        $initialVersion = $cache->currentVersion();
 
         $cached->create($role, $permission);
 
-        self::assertSame(2, $cache->currentVersion());
+        self::assertSame($initialVersion + 1, $cache->currentVersion());
     }
 
     public function test_remove_invalidates_the_cache_after_delegating(): void
@@ -74,11 +76,12 @@ final class CachedRolePermissionRepositoryTest extends CacheTestCase
                    ->method('remove')
                    ->with($role, $permission);
 
-        $cache  = $this->cacheStore();
-        $cached = new CachedRolePermissionRepository($repository, $cache);
+        $cache          = $this->cacheStore();
+        $cached         = new CachedRolePermissionRepository($repository, $cache);
+        $initialVersion = $cache->currentVersion();
 
         $cached->remove($role, $permission);
 
-        self::assertSame(2, $cache->currentVersion());
+        self::assertSame($initialVersion + 1, $cache->currentVersion());
     }
 }

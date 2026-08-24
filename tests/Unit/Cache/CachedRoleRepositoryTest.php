@@ -39,15 +39,16 @@ final class CachedRoleRepositoryTest extends CacheTestCase
                    ->method('update')
                    ->with(10, 'Cashier', 'Front desk role');
 
-        $cache  = $this->cacheStore();
-        $cached = new CachedRoleRepository($repository, $cache);
+        $cache          = $this->cacheStore();
+        $cached         = new CachedRoleRepository($repository, $cache);
+        $initialVersion = $cache->currentVersion();
 
         self::assertSame(['cashier'], $cached->lookup('cashier')->codes());
         self::assertTrue($cached->exists(10));
         self::assertSame($role, $cached->create('cashier', 'Cashier'));
         $cached->update(10, 'Cashier', 'Front desk role');
 
-        self::assertSame(1, $cache->currentVersion());
+        self::assertSame($initialVersion, $cache->currentVersion());
     }
 
     public function test_remove_invalidates_the_cache_after_delegating_to_the_source_repository(): void
@@ -57,11 +58,12 @@ final class CachedRoleRepositoryTest extends CacheTestCase
                    ->method('remove')
                    ->with(10);
 
-        $cache  = $this->cacheStore();
-        $cached = new CachedRoleRepository($repository, $cache);
+        $cache          = $this->cacheStore();
+        $cached         = new CachedRoleRepository($repository, $cache);
+        $initialVersion = $cache->currentVersion();
 
         $cached->remove(10);
 
-        self::assertSame(2, $cache->currentVersion());
+        self::assertSame($initialVersion + 1, $cache->currentVersion());
     }
 }
