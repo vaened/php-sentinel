@@ -23,7 +23,6 @@ use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Roles;
 use Vaened\Sentinel\Subject;
-use Vaened\Sentinel\SubjectPermissionState;
 
 final readonly class Granter extends Operator
 {
@@ -62,6 +61,7 @@ final readonly class Granter extends Operator
     {
         $available = $this->takePermissionsOrFail($permissions);
         $assigned  = $this->subjectPermissions->lookup($owner, ...$permissions->codes());
+        $inherited = null;
 
         $toCreate = [];
         $toUpdate = [];
@@ -70,6 +70,12 @@ final readonly class Granter extends Operator
             $assignment = $assigned->find($permission->code());
 
             if (null === $assignment) {
+                $inherited ??= $this->subjectRoles->grants($owner, $permissions->codes())->codes();
+
+                if (in_array($permission->code(), $inherited, true)) {
+                    continue;
+                }
+
                 $toCreate[] = SubjectPermissionSnapshot::from($permission);
                 continue;
             }
