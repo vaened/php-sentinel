@@ -13,11 +13,35 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
 use Vaened\Sentinel\Cache\CachedSubjectPermissionRepository;
+use Vaened\Sentinel\Projection\ProjectionSubjectPermission;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\SubjectPermissions;
+use Vaened\Sentinel\SubjectPermissionState;
 
 final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
 {
+    public function test_lookup_and_all_of_exclude_inherited_permissions(): void
+    {
+        $subject = $this->cachedSubject();
+
+        $projections = $this->projectionCache();
+        $projections->save($subject, $this->projection([], [
+            new ProjectionSubjectPermission('posts.edit', SubjectPermissionState::Inherited),
+            new ProjectionSubjectPermission('posts.delete', SubjectPermissionState::Direct),
+        ]));
+
+        $cached = new CachedSubjectPermissionRepository(
+            $this->createStub(SubjectPermissionRepository::class),
+            $projections,
+        );
+
+        self::assertSame(
+            ['posts.delete'],
+            $cached->lookup($subject, 'posts.edit', 'posts.delete')->codes(),
+        );
+        self::assertSame(['posts.delete'], $cached->allOf($subject)->codes());
+    }
+
     public function test_lookup_reads_subject_permissions_from_cache_after_the_first_load(): void
     {
         $subject     = $this->cachedSubject();

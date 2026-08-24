@@ -155,6 +155,19 @@ final class AuthorizerFlowTest extends TestCase
         self::assertTrue($this->authorizer->can($this->subject, ['posts.edit']));
     }
 
+    public function test_subject_does_not_keep_a_role_permission_after_the_role_is_revoked(): void
+    {
+        $permission = $this->permission('posts.edit');
+
+        $this->granter->grant($this->role, $permission);
+        $this->granter->grant($this->subject, $this->role);
+        $this->granter->grant($this->subject, $permission);
+
+        $this->revoker->revoke($this->subject, $this->role);
+
+        self::assertFalse($this->authorizer->can($this->subject, ['posts.edit']));
+    }
+
     public function test_subject_denial_prevails_over_role_permission(): void
     {
         $permission = $this->permission('users.delete');

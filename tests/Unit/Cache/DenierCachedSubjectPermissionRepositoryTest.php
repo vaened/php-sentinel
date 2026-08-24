@@ -24,7 +24,7 @@ use Vaened\Sentinel\SubjectPermissions;
 
 final class DenierCachedSubjectPermissionRepositoryTest extends CacheTestCase
 {
-    public function test_denier_tries_to_update_when_cached_lookup_only_sees_an_inherited_permission(): void
+    public function test_denier_creates_a_direct_denial_when_cached_projection_contains_an_inherited_permission(): void
     {
         $subject    = $this->cachedSubject();
         $permission = $this->cachedPermission(10, 'posts.edit', 'Edit Posts');
