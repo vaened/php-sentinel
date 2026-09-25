@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-09-25
+
+### Changed
+
+- Cached subject authorization projections now retain both a subject assignment or denial and a role-inherited grant for the same
+  permission code. This allows cached role grants to be resolved from the projection without changing authorization precedence.
+
+### Fixed
+
+- Cached `SubjectRoleRepository::grants()` now uses the subject authorization projection after it has been built, avoiding repeated
+  persistence reads for inherited permission checks.
+
+### Breaking
+
+- Invalidate authorization caches during deployment. Existing projections do not retain inherited-grant provenance and cannot be used
+  after upgrading.
+
+[0.8.0]: https://github.com/vaened/php-sentinel/compare/v0.7.1...v0.8.0
+
 ## [0.7.1] - 2026-08-24
 
 ### Fixed
