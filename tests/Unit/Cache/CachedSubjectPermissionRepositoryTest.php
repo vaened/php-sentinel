@@ -42,6 +42,29 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
         self::assertSame(['posts.delete'], $cached->allOf($subject)->codes());
     }
 
+    public function test_lookup_normalizes_combined_projection_states_to_the_owned_repository_contract(): void
+    {
+        $subject = $this->cachedSubject();
+
+        $projections = $this->projectionCache();
+        $projections->save($subject, $this->projection([], [
+            new ProjectionSubjectPermission('posts.edit', SubjectPermissionState::DirectInherited),
+            new ProjectionSubjectPermission('posts.delete', SubjectPermissionState::DeniedInherited),
+            new ProjectionSubjectPermission('posts.publish', SubjectPermissionState::Inherited),
+        ]));
+
+        $cached = new CachedSubjectPermissionRepository(
+            $this->createStub(SubjectPermissionRepository::class),
+            $projections,
+        );
+
+        $permissions = $cached->lookup($subject, 'posts.edit', 'posts.delete', 'posts.publish');
+
+        self::assertSame(['posts.edit', 'posts.delete'], $permissions->codes());
+        self::assertSame(SubjectPermissionState::Direct, $permissions->find('posts.edit')?->state());
+        self::assertSame(SubjectPermissionState::Denied, $permissions->find('posts.delete')?->state());
+    }
+
     public function test_lookup_reads_subject_permissions_from_cache_after_the_first_load(): void
     {
         $subject     = $this->cachedSubject();
@@ -130,6 +153,35 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
         $cached->update($subject, $deniedPermission);
 
         self::assertTrue($cached->lookup($subject, 'users.read')->find('users.read')?->state()->isDenied());
+    }
+
+    public function test_update_preserves_a_role_grant_while_the_owned_permission_becomes_denied(): void
+    {
+        $subject          = $this->cachedSubject();
+        $deniedPermission = $this->cachedSubjectPermission(10, 'users.read', true);
+
+        $repository = $this->createMock(SubjectPermissionRepository::class);
+        $repository->expects(self::once())
+                   ->method('update')
+                   ->with($subject, $deniedPermission);
+
+        $projections = $this->projectionCache();
+        $projections->save($subject, $this->projection([], [
+            new ProjectionSubjectPermission('users.read', SubjectPermissionState::Inherited),
+        ]));
+
+        $cached = new CachedSubjectPermissionRepository($repository, $projections);
+
+        $cached->update($subject, $deniedPermission);
+
+        self::assertSame(
+            SubjectPermissionState::DeniedInherited,
+            $projections->load($subject)?->permissions()->find('users.read')?->state(),
+        );
+        self::assertSame(
+            SubjectPermissionState::Denied,
+            $cached->lookup($subject, 'users.read')->find('users.read')?->state(),
+        );
     }
 
     public function test_remove_forgets_the_subject_projection_and_reloads_it_on_the_next_lookup(): void

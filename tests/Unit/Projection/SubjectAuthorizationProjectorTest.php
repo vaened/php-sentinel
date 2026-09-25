@@ -17,8 +17,8 @@ use Vaened\Sentinel\Projection\SubjectAuthorizationProjector;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Roles;
-use Vaened\Sentinel\SubjectPermissionState;
 use Vaened\Sentinel\SubjectPermissions;
+use Vaened\Sentinel\SubjectPermissionState;
 use Vaened\Sentinel\Tests\Runtime\TestPermission;
 use Vaened\Sentinel\Tests\Runtime\TestRole;
 use Vaened\Sentinel\Tests\Runtime\TestSubject;
@@ -29,66 +29,66 @@ final class SubjectAuthorizationProjectorTest extends TestCase
 {
     public function test_project_returns_an_empty_projection_when_the_subject_has_no_roles_or_permissions(): void
     {
-        $roles = $this->createMock(SubjectRoleRepository::class);
+        $roles       = $this->createMock(SubjectRoleRepository::class);
         $permissions = $this->createMock(SubjectPermissionRepository::class);
-        $subject = new TestSubject(1);
+        $subject     = new TestSubject(1);
 
         $roles->expects(self::once())
-            ->method('allOf')
-            ->with($subject)
-            ->willReturn(new Roles([]));
+              ->method('allOf')
+              ->with($subject)
+              ->willReturn(new Roles([]));
 
         $roles->expects(self::once())
-            ->method('grants')
-            ->with($subject)
-            ->willReturn(new Permissions([]));
+              ->method('grants')
+              ->with($subject)
+              ->willReturn(new Permissions([]));
 
         $permissions->expects(self::once())
-            ->method('allOf')
-            ->with($subject)
-            ->willReturn(new SubjectPermissions([]));
+                    ->method('allOf')
+                    ->with($subject)
+                    ->willReturn(new SubjectPermissions([]));
 
         $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
 
         self::assertSame([
-            'roles' => [],
+            'roles'       => [],
             'permissions' => [],
         ], $projection->toArray());
     }
 
     public function test_project_returns_flat_roles_and_direct_permissions(): void
     {
-        $roles = $this->createMock(SubjectRoleRepository::class);
+        $roles       = $this->createMock(SubjectRoleRepository::class);
         $permissions = $this->createMock(SubjectPermissionRepository::class);
-        $subject = new TestSubject(1);
+        $subject     = new TestSubject(1);
 
         $roles->expects(self::once())
-            ->method('allOf')
-            ->with($subject)
-            ->willReturn(new Roles([
-                new TestRole(10, 'admin', 'Admin'),
-                new TestRole(20, 'editor', 'Editor'),
-            ]));
+              ->method('allOf')
+              ->with($subject)
+              ->willReturn(new Roles([
+                  new TestRole(10, 'admin', 'Admin'),
+                  new TestRole(20, 'editor', 'Editor'),
+              ]));
 
         $roles->expects(self::once())
-            ->method('grants')
-            ->with($subject)
-            ->willReturn(new Permissions([]));
+              ->method('grants')
+              ->with($subject)
+              ->willReturn(new Permissions([]));
 
         $permissions->expects(self::once())
-            ->method('allOf')
-            ->with($subject)
-            ->willReturn(new SubjectPermissions([
-                new TestSubjectPermission(100, 'posts.edit'),
-                new TestSubjectPermission(200, 'posts.delete', SubjectPermissionState::Denied),
-            ]));
+                    ->method('allOf')
+                    ->with($subject)
+                    ->willReturn(new SubjectPermissions([
+                        new TestSubjectPermission(100, 'posts.edit'),
+                        new TestSubjectPermission(200, 'posts.delete', SubjectPermissionState::Denied),
+                    ]));
 
         $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
 
         self::assertSame([
-            'roles' => ['admin', 'editor'],
+            'roles'       => ['admin', 'editor'],
             'permissions' => [
-                'posts.edit' => 1,
+                'posts.edit'   => 1,
                 'posts.delete' => 0,
             ],
         ], $projection->toArray());
@@ -96,81 +96,102 @@ final class SubjectAuthorizationProjectorTest extends TestCase
 
     public function test_project_completes_missing_permissions_from_inherited_grants(): void
     {
-        $roles = $this->createMock(SubjectRoleRepository::class);
+        $roles       = $this->createMock(SubjectRoleRepository::class);
         $permissions = $this->createMock(SubjectPermissionRepository::class);
-        $subject = new TestSubject(1);
+        $subject     = new TestSubject(1);
 
         $roles->expects(self::once())
-            ->method('allOf')
-            ->with($subject)
-            ->willReturn(new Roles([
-                new TestRole(10, 'admin', 'Admin'),
-            ]));
+              ->method('allOf')
+              ->with($subject)
+              ->willReturn(new Roles([
+                  new TestRole(10, 'admin', 'Admin'),
+              ]));
 
         $roles->expects(self::once())
-            ->method('grants')
-            ->with($subject)
-            ->willReturn(new Permissions([
-                new TestPermission(100, 'posts.edit', 'Edit Posts'),
-                new TestPermission(200, 'posts.publish', 'Publish Posts'),
-            ]));
+              ->method('grants')
+              ->with($subject)
+              ->willReturn(new Permissions([
+                  new TestPermission(100, 'posts.edit', 'Edit Posts'),
+                  new TestPermission(200, 'posts.publish', 'Publish Posts'),
+              ]));
 
         $permissions->expects(self::once())
-            ->method('allOf')
-            ->with($subject)
-            ->willReturn(new SubjectPermissions([
-                new TestSubjectPermission(300, 'users.delete'),
-            ]));
+                    ->method('allOf')
+                    ->with($subject)
+                    ->willReturn(new SubjectPermissions([
+                        new TestSubjectPermission(300, 'users.delete'),
+                    ]));
 
         $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
 
         self::assertSame([
-            'roles' => ['admin'],
+            'roles'       => ['admin'],
             'permissions' => [
-                'users.delete' => 1,
-                'posts.edit' => 2,
+                'users.delete'  => 1,
+                'posts.edit'    => 2,
                 'posts.publish' => 2,
             ],
         ], $projection->toArray());
     }
 
-    public function test_project_keeps_direct_permissions_when_the_same_code_is_inherited(): void
+    public function test_project_preserves_direct_and_denied_permissions_when_the_same_code_is_inherited(): void
     {
-        $roles = $this->createMock(SubjectRoleRepository::class);
+        $roles       = $this->createMock(SubjectRoleRepository::class);
         $permissions = $this->createMock(SubjectPermissionRepository::class);
-        $subject = new TestSubject(1);
+        $subject     = new TestSubject(1);
 
         $roles->expects(self::once())
-            ->method('allOf')
-            ->with($subject)
-            ->willReturn(new Roles([
-                new TestRole(10, 'admin', 'Admin'),
-            ]));
+              ->method('allOf')
+              ->with($subject)
+              ->willReturn(new Roles([
+                  new TestRole(10, 'admin', 'Admin'),
+              ]));
 
         $roles->expects(self::once())
-            ->method('grants')
-            ->with($subject)
-            ->willReturn(new Permissions([
-                new TestPermission(100, 'posts.edit', 'Edit Posts'),
-                new TestPermission(200, 'posts.publish', 'Publish Posts'),
-                new TestPermission(300, 'posts.publish', 'Publish Posts'),
-            ]));
+              ->method('grants')
+              ->with($subject)
+              ->willReturn(new Permissions([
+                  new TestPermission(100, 'posts.edit', 'Edit Posts'),
+                  new TestPermission(200, 'posts.publish', 'Publish Posts'),
+                  new TestPermission(300, 'posts.publish', 'Publish Posts'),
+              ]));
 
         $permissions->expects(self::once())
-            ->method('allOf')
-            ->with($subject)
-            ->willReturn(new SubjectPermissions([
-                new TestSubjectPermission(400, 'posts.edit', SubjectPermissionState::Denied),
-            ]));
+                    ->method('allOf')
+                    ->with($subject)
+                    ->willReturn(new SubjectPermissions([
+                        new TestSubjectPermission(400, 'posts.edit', SubjectPermissionState::Denied),
+                    ]));
 
         $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
 
         self::assertSame([
-            'roles' => ['admin'],
+            'roles'       => ['admin'],
             'permissions' => [
-                'posts.edit' => 0,
+                'posts.edit'    => SubjectPermissionState::DeniedInherited->value,
                 'posts.publish' => 2,
             ],
         ], $projection->toArray());
+    }
+
+    public function test_project_preserves_a_direct_permission_when_a_role_grants_the_same_code(): void
+    {
+        $roles       = $this->createStub(SubjectRoleRepository::class);
+        $permissions = $this->createStub(SubjectPermissionRepository::class);
+        $subject     = new TestSubject(1);
+
+        $roles->method('allOf')->with($subject)->willReturn(new Roles([
+            new TestRole(10, 'editor', 'Editor'),
+        ]));
+        $roles->method('grants')->with($subject)->willReturn(new Permissions([
+            new TestPermission(100, 'posts.edit', 'Edit Posts'),
+        ]));
+        $permissions->method('allOf')->with($subject)->willReturn(new SubjectPermissions([
+            new TestSubjectPermission(200, 'posts.edit'),
+        ]));
+
+        $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
+
+        self::assertSame(SubjectPermissionState::DirectInherited, $projection->permissions()->find('posts.edit')?->state());
     }
 }

@@ -66,10 +66,13 @@ final class SubjectAuthorizationProjectionTest extends TestCase
 
     public function test_from_array_returns_null_for_an_invalid_projection(): void
     {
-        self::assertNull(SubjectAuthorizationProjection::fromArray(['roles' => ['admin'], 'permissions' => ['posts.edit' => 'invalid']]));
+        self::assertNull(SubjectAuthorizationProjection::fromArray([
+            'roles'       => ['admin'],
+            'permissions' => ['posts.edit' => 'invalid'],
+        ]));
     }
 
-    public function test_integrate_keeps_direct_subject_denials_when_the_role_grants_the_same_code(): void
+    public function test_integrate_records_that_a_denied_permission_is_also_granted_by_a_role(): void
     {
         $projection = $this->projection(
             permissions: [new ProjectionSubjectPermission('documents.annul', SubjectPermissionState::Denied)],
@@ -79,7 +82,7 @@ final class SubjectAuthorizationProjectionTest extends TestCase
         $integrated = $projection->integrate($admin, ['documents.annul', 'users.read']);
 
         self::assertSame(['admin'], $integrated->roles()->codes());
-        self::assertSame(SubjectPermissionState::Denied, $integrated->permissions()->find('documents.annul')?->state());
+        self::assertSame(SubjectPermissionState::DeniedInherited, $integrated->permissions()->find('documents.annul')?->state());
         self::assertSame(SubjectPermissionState::Inherited, $integrated->permissions()->find('users.read')?->state());
     }
 
@@ -92,6 +95,19 @@ final class SubjectAuthorizationProjectionTest extends TestCase
         $admin      = new TestRole(10, 'admin', 'Administrator');
 
         self::assertSame($projection, $projection->integrate($admin, ['users.read']));
+    }
+
+    public function test_override_preserves_an_inherited_grant_when_the_subject_permission_changes(): void
+    {
+        $projection = $this->projection(
+            permissions: [new ProjectionSubjectPermission('users.read', SubjectPermissionState::Inherited)],
+        );
+
+        $overridden = $projection->override(
+            new ProjectionSubjectPermission('users.read', SubjectPermissionState::Denied),
+        );
+
+        self::assertSame(SubjectPermissionState::DeniedInherited, $overridden->permissions()->find('users.read')?->state());
     }
 
     private function projection(array $roles = [], array $permissions = []): SubjectAuthorizationProjection
