@@ -108,13 +108,20 @@ final readonly class SubjectAuthorizationProjection implements JsonSerializable
 
         $roles       = new Authorizations([...$this->roles->values(), new ProjectionAuthorization($role->code())]);
         $permissions = $this->permissions->values();
-        $known       = $this->permissions->codes();
 
         foreach ($grantCodes as $code) {
-            if (!in_array($code, $known, true)) {
-                $permissions[] = new ProjectionSubjectPermission($code, SubjectPermissionState::Inherited);
-                $known[]       = $code;
+            foreach ($permissions as $index => $permission) {
+                if ($permission->code() === $code) {
+                    $permissions[$index] = new ProjectionSubjectPermission(
+                        $code,
+                        $permission->state()->withInherited(),
+                    );
+
+                    continue 2;
+                }
             }
+
+            $permissions[] = new ProjectionSubjectPermission($code, SubjectPermissionState::Inherited);
         }
 
         return new self($roles, new SubjectPermissions($permissions));
@@ -122,12 +129,14 @@ final readonly class SubjectAuthorizationProjection implements JsonSerializable
 
     public function override(SubjectPermission $permission): self
     {
+        $current     = $this->permissions->find($permission->code());
+        $state       = $current?->state()->isInherited() ? $permission->state()->withInherited() : $permission->state();
         $permissions = array_values(array_filter(
             $this->permissions->values(),
             static fn(SubjectPermission $current): bool => $current->code() !== $permission->code(),
         ));
 
-        $permissions[] = new ProjectionSubjectPermission($permission->code(), $permission->state());
+        $permissions[] = new ProjectionSubjectPermission($permission->code(), $state);
 
         return new self($this->roles, new SubjectPermissions($permissions));
     }

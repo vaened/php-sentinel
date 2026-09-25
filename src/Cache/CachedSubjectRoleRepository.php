@@ -17,6 +17,7 @@ use Vaened\Sentinel\Repositories\RolePermissionRepository as RolePermissionRepos
 use Vaened\Sentinel\Repositories\SubjectRoleRepository as SubjectRoleRepositoryContract;
 use Vaened\Sentinel\Role as RoleContract;
 use Vaened\Sentinel\Subject;
+use Vaened\Sentinel\SubjectPermission;
 
 final readonly class CachedSubjectRoleRepository implements SubjectRoleRepositoryContract
 {
@@ -39,7 +40,15 @@ final readonly class CachedSubjectRoleRepository implements SubjectRoleRepositor
 
     public function grants(Subject $subject, ?array $codes = null): Authorizations
     {
-        return $this->repository->grants($subject, $codes);
+        if ($codes === []) {
+            return new Authorizations([]);
+        }
+
+        return new Authorizations(array_values(array_filter(
+            $this->projections->loadOrBuild($subject)->permissions()->values(),
+            static fn(SubjectPermission $permission): bool => $permission->state()->isInherited()
+                && ($codes === null || in_array($permission->code(), $codes, true)),
+        )));
     }
 
     public function exists(int|string $roleId): bool

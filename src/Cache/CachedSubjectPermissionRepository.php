@@ -17,7 +17,6 @@ use Vaened\Sentinel\Projection\ProjectionSubjectPermission;
 use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository as SubjectPermissionRepositoryContract;
 use Vaened\Sentinel\Subject;
-use Vaened\Sentinel\SubjectPermission;
 use Vaened\Sentinel\SubjectPermissions;
 use Vaened\Sentinel\SubjectPermissionState;
 
@@ -93,9 +92,21 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
 
     private function owned(SubjectPermissions $permissions): SubjectPermissions
     {
-        return new SubjectPermissions(array_values(array_filter(
-            $permissions->values(),
-            static fn(SubjectPermission $permission): bool => $permission->state()->isOwned(),
-        )));
+        $owned = [];
+
+        foreach ($permissions as $permission) {
+            if (!$permission->state()->isOwned()) {
+                continue;
+            }
+
+            $owned[] = new ProjectionSubjectPermission(
+                $permission->code(),
+                $permission->state()->isDenied()
+                    ? SubjectPermissionState::Denied
+                    : SubjectPermissionState::Direct,
+            );
+        }
+
+        return new SubjectPermissions($owned);
     }
 }

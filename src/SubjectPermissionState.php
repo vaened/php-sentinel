@@ -20,6 +20,10 @@ enum SubjectPermissionState: int
 
     case Inherited = 2;
 
+    case DirectInherited = 3;
+
+    case DeniedInherited = 4;
+
     public static function fromBoolean(bool $denied): self
     {
         return $denied ? self::Denied : self::Direct;
@@ -27,22 +31,22 @@ enum SubjectPermissionState: int
 
     public function isDirect(): bool
     {
-        return self::Direct === $this;
+        return self::Direct === $this || self::DirectInherited === $this;
     }
 
     public function isInherited(): bool
     {
-        return self::Inherited === $this;
+        return self::Inherited === $this || self::DirectInherited === $this || self::DeniedInherited === $this;
     }
 
     public function isDenied(): bool
     {
-        return self::Denied === $this;
+        return self::Denied === $this || self::DeniedInherited === $this;
     }
 
     public function isGranted(): bool
     {
-        return $this->isDirect() || $this->isInherited();
+        return !$this->isDenied() && ($this->isDirect() || $this->isInherited());
     }
 
     public function isOwned(): bool
@@ -53,5 +57,14 @@ enum SubjectPermissionState: int
     public function toBoolean(): bool
     {
         return $this->isGranted();
+    }
+
+    public function withInherited(): self
+    {
+        return match ($this) {
+            self::Direct => self::DirectInherited,
+            self::Denied => self::DeniedInherited,
+            default      => $this,
+        };
     }
 }

@@ -12,19 +12,20 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Projection;
 
+use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Subject;
-use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\SubjectPermissions;
 use Vaened\Sentinel\SubjectPermissionState;
 
 final readonly class SubjectAuthorizationProjector
 {
     public function __construct(
-        protected SubjectRoleRepository $roles,
+        protected SubjectRoleRepository       $roles,
         protected SubjectPermissionRepository $permissions,
-    ) {
+    )
+    {
     }
 
     public function project(Subject $subject): SubjectAuthorizationProjection
@@ -34,14 +35,21 @@ final readonly class SubjectAuthorizationProjector
             static fn($role): ProjectionAuthorization => new ProjectionAuthorization($role->code()),
             $this->roles->allOf($subject)->values(),
         ));
-        $permissions = $subjectPermissions->values();
-        $known       = $subjectPermissions->codes();
+        $permissions        = $subjectPermissions->values();
 
         foreach ($this->roles->grants($subject) as $permission) {
-            if (!in_array($permission->code(), $known, true)) {
-                $permissions[] = new ProjectionSubjectPermission($permission->code(), SubjectPermissionState::Inherited);
-                $known[]       = $permission->code();
+            foreach ($permissions as $index => $subjectPermission) {
+                if ($subjectPermission->code() === $permission->code()) {
+                    $permissions[$index] = new ProjectionSubjectPermission(
+                        $permission->code(),
+                        $subjectPermission->state()->withInherited(),
+                    );
+
+                    continue 2;
+                }
             }
+
+            $permissions[] = new ProjectionSubjectPermission($permission->code(), SubjectPermissionState::Inherited);
         }
 
         return new SubjectAuthorizationProjection($roles, new SubjectPermissions($permissions));
