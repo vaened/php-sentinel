@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Operators;
 
-use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Errors\PermissionNotFound;
 use Vaened\Sentinel\Errors\RoleNotFound;
 use Vaened\Sentinel\Permissions;
@@ -29,7 +28,7 @@ abstract readonly class Operator
     {
     }
 
-    protected function takePermissionsOrFail(Permissions $permissions): Authorizations
+    protected function takePermissionsOrFail(Permissions $permissions): Permissions
     {
         $available = $this->permissions->lookup(...$permissions->codes());
         $missing   = $available->missing($permissions->codes());
@@ -41,7 +40,7 @@ abstract readonly class Operator
         return $available;
     }
 
-    protected function takeRolesOrFail(Roles $roles): Authorizations
+    protected function takeRolesOrFail(Roles $roles): Roles
     {
         $available = $this->roles->lookup(...$roles->codes());
         $missing   = $available->missing($roles->codes());
