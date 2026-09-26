@@ -21,4 +21,13 @@ class RoleAlreadyExists extends AuthorizationError
             $code,
         ));
     }
+
+    public static function fromScopeConflict(string $code, bool $requestedIsGlobal): static
+    {
+        return new static(sprintf(
+            'Role [%s] cannot be created as %s because global and scoped roles share one namespace.',
+            $code,
+            $requestedIsGlobal ? 'global' : 'scoped',
+        ));
+    }
 }

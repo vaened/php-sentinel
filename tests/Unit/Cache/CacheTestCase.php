@@ -71,13 +71,14 @@ abstract class CacheTestCase extends TestCase
     }
 
     protected function cachedRole(
-        int|string  $id,
-        string      $code,
-        string      $name = 'Role',
-        string|null $description = null,
+        int|string   $id,
+        string       $code,
+        string       $name = 'Role',
+        string|null  $description = null,
+        Subject|null $scope = null,
     ): Role
     {
-        return new TestRole($id, $code, $name, $description);
+        return new TestRole($id, $code, $name, $description, $scope);
     }
 
     protected function cachedPermission(

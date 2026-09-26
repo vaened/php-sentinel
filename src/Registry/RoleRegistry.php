@@ -15,10 +15,12 @@ namespace Vaened\Sentinel\Registry;
 use Vaened\Sentinel\Errors\RoleAlreadyExists;
 use Vaened\Sentinel\Errors\RoleInUse;
 use Vaened\Sentinel\Errors\RoleNotFound;
+use Vaened\Sentinel\Identifiers;
 use Vaened\Sentinel\Repositories\RoleRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Roles;
+use Vaened\Sentinel\Subject;
 
 final readonly class RoleRegistry
 {
@@ -29,13 +31,16 @@ final readonly class RoleRegistry
     {
     }
 
-    public function create(string $code, string $name, string|null $description = null): Role
+    public function create(
+        string       $code,
+        string       $name,
+        string|null  $description = null,
+        Subject|null $scope = null,
+    ): Role
     {
-        if (!$this->roles->lookup($code)->isEmpty()) {
-            throw RoleAlreadyExists::fromCode($code);
-        }
+        $this->ensureNoCollision($code, $scope);
 
-        return $this->roles->create($code, $name, $description);
+        return $this->roles->create($code, $name, $description, $scope);
     }
 
     public function update(int|string $id, string $name, string|null $description = null): void
@@ -60,13 +65,41 @@ final readonly class RoleRegistry
         $this->roles->remove($id);
     }
 
-    public function lookup(array $codes): Roles
+    public function lookup(Subject|null $scope, array $codes): Roles
     {
-        return $this->roles->lookup(...$codes);
+        return $this->roles->lookup($scope, ...$codes);
     }
 
-    public function find(string $code): Role|null
+    public function find(Subject|null $scope, string $code): Role|null
     {
-        return $this->roles->lookup($code)->find($code);
+        return $this->roles->lookup($scope, $code)->find($code);
+    }
+
+    private function ensureNoCollision(string $code, Subject|null $scope): void
+    {
+        foreach ($this->roles->match($code) as $role) {
+            if (!self::collides($role, $scope)) {
+                continue;
+            }
+
+            if (($scope === null) !== ($role->scope() === null)) {
+                throw RoleAlreadyExists::fromScopeConflict($code, $scope === null);
+            }
+
+            throw RoleAlreadyExists::fromCode($code);
+        }
+    }
+
+    private static function collides(Role $role, Subject|null $scope): bool
+    {
+        $roleScope = $role->scope();
+
+        return $scope === null || $roleScope === null || self::hasSameScope($roleScope, $scope);
+    }
+
+    private static function hasSameScope(Subject $left, Subject $right): bool
+    {
+        return $left::class === $right::class
+            && Identifiers::value($left->id()) === Identifiers::value($right->id());
     }
 }

@@ -15,6 +15,7 @@ namespace Vaened\Sentinel\Cache;
 use Vaened\Sentinel\Repositories\RoleRepository as RoleRepositoryContract;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Roles;
+use Vaened\Sentinel\Subject;
 
 final readonly class CachedRoleRepository implements RoleRepositoryContract
 {
@@ -25,9 +26,14 @@ final readonly class CachedRoleRepository implements RoleRepositoryContract
     {
     }
 
-    public function lookup(string ...$codes): Roles
+    public function lookup(Subject|null $scope, string ...$codes): Roles
     {
-        return $this->repository->lookup(...$codes);
+        return $this->repository->lookup($scope, ...$codes);
+    }
+
+    public function match(string ...$codes): Roles
+    {
+        return $this->repository->match(...$codes);
     }
 
     public function exists(int|string $id): bool
@@ -35,9 +41,14 @@ final readonly class CachedRoleRepository implements RoleRepositoryContract
         return $this->repository->exists($id);
     }
 
-    public function create(string $code, string $name, string|null $description = null): Role
+    public function create(
+        string       $code,
+        string       $name,
+        string|null  $description = null,
+        Subject|null $scope = null,
+    ): Role
     {
-        return $this->repository->create($code, $name, $description);
+        return $this->repository->create($code, $name, $description, $scope);
     }
 
     public function update(int|string $id, string $name, string|null $description = null): void

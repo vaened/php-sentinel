@@ -301,7 +301,7 @@ final class AuthorizerFlowTest extends TestCase
 
     protected function role(string $code): TestRole
     {
-        $role = $this->roles->lookup($code)->find($code);
+        $role = $this->roles->lookup(null, $code)->find($code);
 
         if ($role instanceof TestRole) {
             return $role;

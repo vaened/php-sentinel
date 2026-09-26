@@ -15,17 +15,19 @@ namespace Vaened\Sentinel\Tests\Unit\Cache;
 use Vaened\Sentinel\Cache\CachedRoleRepository;
 use Vaened\Sentinel\Repositories\RoleRepository;
 use Vaened\Sentinel\Roles;
+use Vaened\Sentinel\Tests\Runtime\TestSubject;
 
 final class CachedRoleRepositoryTest extends CacheTestCase
 {
     public function test_lookup_exists_create_and_update_delegate_without_touching_the_cache_version(): void
     {
-        $role = $this->cachedRole(10, 'cashier', 'Cashier');
+        $scope = new TestSubject(1);
+        $role  = $this->cachedRole(10, 'cashier', 'Cashier', scope: $scope);
 
         $repository = $this->createMock(RoleRepository::class);
         $repository->expects(self::once())
                    ->method('lookup')
-                   ->with('cashier')
+                   ->with($scope, 'cashier')
                    ->willReturn(new Roles([$role]));
         $repository->expects(self::once())
                    ->method('exists')
@@ -33,7 +35,7 @@ final class CachedRoleRepositoryTest extends CacheTestCase
                    ->willReturn(true);
         $repository->expects(self::once())
                    ->method('create')
-                   ->with('cashier', 'Cashier', null)
+                   ->with('cashier', 'Cashier', null, $scope)
                    ->willReturn($role);
         $repository->expects(self::once())
                    ->method('update')
@@ -43,9 +45,9 @@ final class CachedRoleRepositoryTest extends CacheTestCase
         $cached         = new CachedRoleRepository($repository, $cache);
         $initialVersion = $cache->currentVersion();
 
-        self::assertSame(['cashier'], $cached->lookup('cashier')->codes());
+        self::assertSame(['cashier'], $cached->lookup($scope, 'cashier')->codes());
         self::assertTrue($cached->exists(10));
-        self::assertSame($role, $cached->create('cashier', 'Cashier'));
+        self::assertSame($role, $cached->create('cashier', 'Cashier', scope: $scope));
         $cached->update(10, 'Cashier', 'Front desk role');
 
         self::assertSame($initialVersion, $cache->currentVersion());
@@ -65,5 +67,23 @@ final class CachedRoleRepositoryTest extends CacheTestCase
         $cached->remove(10);
 
         self::assertSame($initialVersion + 1, $cache->currentVersion());
+    }
+
+    public function test_match_delegates_without_touching_the_cache_version(): void
+    {
+        $role = $this->cachedRole(10, 'cashier', 'Cashier');
+
+        $repository = $this->createMock(RoleRepository::class);
+        $repository->expects(self::once())
+                   ->method('match')
+                   ->with('cashier')
+                   ->willReturn(new Roles([$role]));
+
+        $cache          = $this->cacheStore();
+        $cached         = new CachedRoleRepository($repository, $cache);
+        $initialVersion = $cache->currentVersion();
+
+        self::assertSame(['cashier'], $cached->match('cashier')->codes());
+        self::assertSame($initialVersion, $cache->currentVersion());
     }
 }

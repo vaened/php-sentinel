@@ -12,8 +12,11 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Runtime\Repositories;
 
+use Vaened\Sentinel\Errors\RoleAlreadyExists;
+use Vaened\Sentinel\Identifiers;
 use Vaened\Sentinel\Repositories\RoleRepository;
 use Vaened\Sentinel\Roles;
+use Vaened\Sentinel\Subject;
 use Vaened\Sentinel\Tests\Runtime\AbstractAuthorization;
 use Vaened\Sentinel\Tests\Runtime\TestRole;
 
@@ -22,11 +25,21 @@ final class InMemoryRoleRepository implements RoleRepository
     /**
      * @var array<int|string, TestRole>
      */
-    protected array $items = [];
+    protected array $items  = [];
 
-    protected int $nextId = 1;
+    protected int   $nextId = 1;
 
-    public function lookup(string ...$codes): Roles
+    public function lookup(Subject|null $scope, string ...$codes): Roles
+    {
+        $codes = array_flip($codes);
+
+        return new Roles(array_values(array_filter(
+            $this->items,
+            fn(TestRole $role): bool => isset($codes[$role->code()]) && $this->hasSameScope($role, $scope),
+        )));
+    }
+
+    public function match(string ...$codes): Roles
     {
         $codes = array_flip($codes);
 
@@ -41,9 +54,24 @@ final class InMemoryRoleRepository implements RoleRepository
         return isset($this->items[$id]);
     }
 
-    public function create(string $code, string $name, string|null $description = null): TestRole
+    public function create(
+        string       $code,
+        string       $name,
+        string|null  $description = null,
+        Subject|null $scope = null,
+    ): TestRole
     {
-        $role = new TestRole($this->nextId++, $code, $name, $description);
+        foreach ($this->items as $role) {
+            if ($role->code() !== $code) {
+                continue;
+            }
+
+            if ($scope === null || $role->scope() === null || $this->hasSameScope($role, $scope)) {
+                throw RoleAlreadyExists::fromCode($code);
+            }
+        }
+
+        $role                     = new TestRole($this->nextId++, $code, $name, $description, $scope);
         $this->items[$role->id()] = $role;
 
         return $role;
@@ -62,5 +90,17 @@ final class InMemoryRoleRepository implements RoleRepository
     public function remove(int|string $id): void
     {
         unset($this->items[$id]);
+    }
+
+    private function hasSameScope(TestRole $role, Subject|null $scope): bool
+    {
+        $roleScope = $role->scope();
+
+        if ($roleScope === null || $scope === null) {
+            return $roleScope === $scope;
+        }
+
+        return $roleScope::class === $scope::class
+            && Identifiers::value($roleScope->id()) === Identifiers::value($scope->id());
     }
 }

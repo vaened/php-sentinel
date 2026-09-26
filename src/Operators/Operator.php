@@ -42,7 +42,7 @@ abstract readonly class Operator
 
     protected function takeRolesOrFail(Roles $roles): Roles
     {
-        $available = $this->roles->lookup(...$roles->codes());
+        $available = $this->roles->lookup(null, ...$roles->codes());
         $missing   = $available->missing($roles->codes());
 
         if (!empty($missing)) {
