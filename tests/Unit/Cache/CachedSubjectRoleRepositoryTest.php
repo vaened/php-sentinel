@@ -177,4 +177,52 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
 
         self::assertSame($projection->toArray(), $projections->load($subject)?->toArray());
     }
+
+    public function test_remove_failure_does_not_forget_the_subject_projection(): void
+    {
+        $subject    = $this->cachedSubject();
+        $role       = $this->cachedRole(10, 'cashier', 'Cashier');
+        $repository = $this->createMock(SubjectRoleRepository::class);
+        $repository->expects(self::once())
+                   ->method('remove')
+                   ->willThrowException(new RuntimeException('remove failed'));
+
+        $projections = $this->projectionCache();
+        $projection  = $this->projection([$role]);
+        $projections->save($subject, $projection);
+        $cached = new CachedSubjectRoleRepository($repository, $projections);
+
+        try {
+            $cached->remove($subject, $role);
+            self::fail('Expected remove to fail.');
+        } catch (RuntimeException $exception) {
+            self::assertSame('remove failed', $exception->getMessage());
+        }
+
+        self::assertSame($projection->toArray(), $projections->load($subject)?->toArray());
+    }
+
+    public function test_purge_failure_does_not_forget_the_subject_projection(): void
+    {
+        $subject    = $this->cachedSubject();
+        $role       = $this->cachedRole(10, 'cashier', 'Cashier');
+        $repository = $this->createMock(SubjectRoleRepository::class);
+        $repository->expects(self::once())
+                   ->method('purge')
+                   ->willThrowException(new RuntimeException('purge failed'));
+
+        $projections = $this->projectionCache();
+        $projection  = $this->projection([$role]);
+        $projections->save($subject, $projection);
+        $cached = new CachedSubjectRoleRepository($repository, $projections);
+
+        try {
+            $cached->purge($subject);
+            self::fail('Expected purge to fail.');
+        } catch (RuntimeException $exception) {
+            self::assertSame('purge failed', $exception->getMessage());
+        }
+
+        self::assertSame($projection->toArray(), $projections->load($subject)?->toArray());
+    }
 }

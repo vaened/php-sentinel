@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
+use RuntimeException;
 use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Cache\CachedRolePermissionRepository;
 use Vaened\Sentinel\Repositories\RolePermissionRepository;
@@ -83,5 +84,53 @@ final class CachedRolePermissionRepositoryTest extends CacheTestCase
         $cached->remove($role, $permission);
 
         self::assertSame($initialVersion + 1, $cache->currentVersion());
+    }
+
+    public function test_create_failure_does_not_invalidate_the_cache(): void
+    {
+        $role       = $this->cachedRole(10, 'cashier', 'Cashier');
+        $permission = $this->cachedPermission(20, 'documents.create', 'Create Documents');
+
+        $repository = $this->createMock(RolePermissionRepository::class);
+        $repository->expects(self::once())
+                   ->method('create')
+                   ->willThrowException(new RuntimeException('create failed'));
+
+        $cache          = $this->cacheStore();
+        $cached         = new CachedRolePermissionRepository($repository, $cache);
+        $initialVersion = $cache->currentVersion();
+
+        try {
+            $cached->create($role, $permission);
+            self::fail('Expected create to fail.');
+        } catch (RuntimeException $exception) {
+            self::assertSame('create failed', $exception->getMessage());
+        }
+
+        self::assertSame($initialVersion, $cache->currentVersion());
+    }
+
+    public function test_remove_failure_does_not_invalidate_the_cache(): void
+    {
+        $role       = $this->cachedRole(10, 'cashier', 'Cashier');
+        $permission = $this->cachedPermission(20, 'documents.create', 'Create Documents');
+
+        $repository = $this->createMock(RolePermissionRepository::class);
+        $repository->expects(self::once())
+                   ->method('remove')
+                   ->willThrowException(new RuntimeException('remove failed'));
+
+        $cache          = $this->cacheStore();
+        $cached         = new CachedRolePermissionRepository($repository, $cache);
+        $initialVersion = $cache->currentVersion();
+
+        try {
+            $cached->remove($role, $permission);
+            self::fail('Expected remove to fail.');
+        } catch (RuntimeException $exception) {
+            self::assertSame('remove failed', $exception->getMessage());
+        }
+
+        self::assertSame($initialVersion, $cache->currentVersion());
     }
 }
