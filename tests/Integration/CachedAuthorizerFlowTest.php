@@ -152,6 +152,8 @@ final class CachedAuthorizerFlowTest extends TestCase
         $this->granter->grant($this->subject, $role);
 
         $this->assertPersistedState($permission, SubjectPermissionState::Direct);
+        self::assertNull($this->cache->get($this->subject));
+        self::assertTrue($this->authorizer->can($this->subject, [$permission->code()]));
         $this->assertProjectionState($permission, SubjectPermissionState::DirectInherited);
 
         $this->denier->deny($this->subject, $permission);
@@ -173,6 +175,8 @@ final class CachedAuthorizerFlowTest extends TestCase
 
         $this->granter->grant($this->subject, $permission);
         $this->granter->grant($this->subject, $role);
+        self::assertNull($this->cache->get($this->subject));
+        self::assertTrue($this->authorizer->can($this->subject, [$permission->code()]));
         $this->assertProjectionState($permission, SubjectPermissionState::DirectInherited);
 
         $this->revoker->revoke($this->subject, $permission);

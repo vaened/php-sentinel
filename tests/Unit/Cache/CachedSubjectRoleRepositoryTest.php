@@ -12,10 +12,10 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
+use RuntimeException;
 use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Cache\CachedSubjectRoleRepository;
 use Vaened\Sentinel\Projection\ProjectionSubjectPermission;
-use Vaened\Sentinel\Repositories\RolePermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\SubjectPermissionState;
 
@@ -27,14 +27,12 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
         $cashier    = $this->cachedRole(10, 'cashier', 'Cashier');
         $projection = $this->projection([$cashier]);
 
-        $repository      = $this->createStub(SubjectRoleRepository::class);
-        $rolePermissions = $this->createStub(RolePermissionRepository::class);
-        $projections     = $this->projectionCache();
+        $repository  = $this->createStub(SubjectRoleRepository::class);
+        $projections = $this->projectionCache();
         $projections->save($subject, $projection);
 
         $cached = new CachedSubjectRoleRepository(
             $repository,
-            $rolePermissions,
             $projections,
         );
 
@@ -49,9 +47,6 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
         $repository = $this->createMock(SubjectRoleRepository::class);
         $repository->expects(self::never())->method('grants');
 
-        $rolePermissions = $this->createMock(RolePermissionRepository::class);
-        $rolePermissions->expects(self::never())->method('allOf');
-
         $projections = $this->projectionCache();
         $projections->save($subject, $this->projection(permissions: [
             new ProjectionSubjectPermission('documents.create', SubjectPermissionState::Inherited),
@@ -62,7 +57,6 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
 
         $cached = new CachedSubjectRoleRepository(
             $repository,
-            $rolePermissions,
             $projections,
         );
 
@@ -72,38 +66,36 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
         self::assertSame([], $cached->grants($subject, [])->codes());
     }
 
-    public function test_create_updates_the_cached_projection_using_the_role_permissions(): void
+    public function test_create_forgets_the_cached_projection_and_rebuilds_from_the_source(): void
     {
-        $subject         = $this->cachedSubject();
-        $role            = $this->cachedRole(10, 'cashier', 'Cashier');
-        $createDocuments = $this->cachedPermission(20, 'documents.create', 'Create Documents');
-        $initial         = $this->projection();
+        $subject = $this->cachedSubject();
+        $role    = $this->cachedRole(10, 'cashier', 'Cashier');
 
         $repository = $this->createMock(SubjectRoleRepository::class);
         $repository->expects(self::once())
                    ->method('create')
                    ->with($subject, $role);
+        $repository->expects(self::once())
+                   ->method('allOf')
+                   ->with($subject)
+                   ->willReturn(new Authorizations([$role]));
+        $repository->expects(self::once())
+                   ->method('grants')
+                   ->with($subject)
+                   ->willReturn(new Authorizations([]));
 
-        $rolePermissions = $this->createMock(RolePermissionRepository::class);
-        $rolePermissions->expects(self::once())
-                        ->method('allOf')
-                        ->with($role)
-                        ->willReturn(new Authorizations([$createDocuments]));
-
-        $projections = $this->projectionCache();
-        $projections->save($subject, $initial);
+        $projections = $this->projectionCache(roles: $repository);
+        $projections->save($subject, $this->projection());
 
         $cached = new CachedSubjectRoleRepository(
             $repository,
-            $rolePermissions,
             $projections,
         );
 
         $cached->create($subject, $role);
 
-        self::assertSame(['cashier'], $projections->load($subject)?->roles()->codes());
-        self::assertSame(['documents.create' => SubjectPermissionState::Inherited->value],
-            $projections->load($subject)?->toArray()['permissions']);
+        self::assertNull($projections->load($subject));
+        self::assertSame(['cashier'], $cached->lookup($subject, 'cashier')->codes());
     }
 
     public function test_remove_forgets_the_subject_projection_and_reloads_it_on_the_next_lookup(): void
@@ -123,15 +115,13 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
                    ->method('remove')
                    ->with($subject, $role);
 
-        $rolePermissions = $this->createStub(RolePermissionRepository::class);
-        $projections     = $this->projectionCache(
+        $projections = $this->projectionCache(
             roles: $repository,
         );
         $projections->save($subject, $this->projection([$role]));
 
         $cached = new CachedSubjectRoleRepository(
             $repository,
-            $rolePermissions,
             $projections,
         );
 
@@ -156,12 +146,35 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
 
         $cached = new CachedSubjectRoleRepository(
             $repository,
-            $this->createStub(RolePermissionRepository::class),
             $projections,
         );
 
         $cached->purge($subject);
 
         self::assertNull($projections->load($subject));
+    }
+
+    public function test_create_failure_does_not_forget_the_subject_projection(): void
+    {
+        $subject    = $this->cachedSubject();
+        $role       = $this->cachedRole(10, 'cashier', 'Cashier');
+        $repository = $this->createMock(SubjectRoleRepository::class);
+        $repository->expects(self::once())
+                   ->method('create')
+                   ->willThrowException(new RuntimeException('create failed'));
+
+        $projections = $this->projectionCache();
+        $projection  = $this->projection([$role]);
+        $projections->save($subject, $projection);
+        $cached = new CachedSubjectRoleRepository($repository, $projections);
+
+        try {
+            $cached->create($subject, $role);
+            self::fail('Expected create to fail.');
+        } catch (RuntimeException $exception) {
+            self::assertSame('create failed', $exception->getMessage());
+        }
+
+        self::assertSame($projection->toArray(), $projections->load($subject)?->toArray());
     }
 }

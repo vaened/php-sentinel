@@ -14,7 +14,6 @@ namespace Vaened\Sentinel\Cache;
 
 use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Projection\ProjectionSubjectPermission;
-use Vaened\Sentinel\Projection\SubjectAuthorizationProjection;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository as SubjectPermissionRepositoryContract;
 use Vaened\Sentinel\Subject;
 use Vaened\Sentinel\SubjectPermissions;
@@ -51,13 +50,13 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
     public function create(Subject $subject, SubjectPermissionSnapshot ...$permissions): void
     {
         $this->repository->create($subject, ...$permissions);
-        $this->saveProjection($subject, ...$permissions);
+        $this->projections->forget($subject);
     }
 
     public function update(Subject $subject, SubjectPermissionSnapshot ...$permissions): void
     {
         $this->repository->update($subject, ...$permissions);
-        $this->saveProjection($subject, ...$permissions);
+        $this->projections->forget($subject);
     }
 
     public function remove(Subject $subject, SubjectPermissionSnapshot ...$permissions): void
@@ -70,30 +69,6 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
     {
         $this->repository->purge($subject);
         $this->projections->forget($subject);
-    }
-
-    private function saveProjection(Subject $subject, SubjectPermissionSnapshot ...$permissions): void
-    {
-        $projection = $this->projections->loadOrBuild($subject);
-
-        foreach ($permissions as $permission) {
-            $projection = $this->withPermission($projection, $permission);
-        }
-
-        $this->projections->save($subject, $projection);
-    }
-
-    private function withPermission(
-        SubjectAuthorizationProjection $projection,
-        SubjectPermissionSnapshot      $permission,
-    ): SubjectAuthorizationProjection
-    {
-        return $projection->override(
-            new ProjectionSubjectPermission(
-                $permission->code(),
-                SubjectPermissionState::fromBoolean($permission->isDenied()),
-            ),
-        );
     }
 
     private function owned(SubjectPermissions $permissions): SubjectPermissions

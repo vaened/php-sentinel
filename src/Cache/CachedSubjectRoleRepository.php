@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Cache;
 
 use Vaened\Sentinel\Authorizations;
-use Vaened\Sentinel\Repositories\RolePermissionRepository as RolePermissionRepositoryContract;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository as SubjectRoleRepositoryContract;
 use Vaened\Sentinel\Role as RoleContract;
 use Vaened\Sentinel\Subject;
@@ -23,7 +22,6 @@ final readonly class CachedSubjectRoleRepository implements SubjectRoleRepositor
 {
     public function __construct(
         private SubjectRoleRepositoryContract       $repository,
-        private RolePermissionRepositoryContract    $rolePermissions,
         private SubjectAuthorizationProjectionCache $projections,
     )
     {
@@ -64,15 +62,7 @@ final readonly class CachedSubjectRoleRepository implements SubjectRoleRepositor
     public function create(Subject $subject, RoleContract ...$roles): void
     {
         $this->repository->create($subject, ...$roles);
-
-        $projection = $this->projections->loadOrBuild($subject);
-
-        foreach ($roles as $role) {
-            $effectiveCodes = $this->rolePermissions->allOf($role)->codes();
-            $projection     = $projection->integrate($role, $effectiveCodes);
-        }
-
-        $this->projections->save($subject, $projection);
+        $this->projections->forget($subject);
     }
 
     public function remove(Subject $subject, RoleContract ...$roles): void

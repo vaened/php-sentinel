@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Unit\Cache;
 
+use RuntimeException;
 use Vaened\Sentinel\Cache\CachedSubjectPermissionRepository;
 use Vaened\Sentinel\Projection\ProjectionSubjectPermission;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
@@ -93,20 +94,22 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
         self::assertSame($first->codes(), $second->codes());
     }
 
-    public function test_create_updates_the_cached_subject_permissions_without_reloading_the_source_repository(): void
+    public function test_create_forgets_the_cached_projection_and_rebuilds_from_the_source(): void
     {
         $subject     = $this->cachedSubject();
         $readUsers   = $this->cachedSubjectPermission(10, 'users.read');
         $createUsers = $this->cachedSubjectPermission(11, 'users.create');
 
         $repository = $this->createMock(SubjectPermissionRepository::class);
-        $repository->expects(self::never())
-                   ->method('allOf');
+        $repository->expects(self::once())
+                   ->method('allOf')
+                   ->with($subject)
+                   ->willReturn(new SubjectPermissions([$readUsers, $createUsers]));
         $repository->expects(self::once())
                    ->method('create')
                    ->with($subject, $createUsers);
 
-        $projections = $this->projectionCache();
+        $projections = $this->projectionCache(permissions: $repository);
         $projections->save($subject, $this->projection([], [$readUsers]));
 
         $cached = new CachedSubjectPermissionRepository(
@@ -117,31 +120,30 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
         $cached->lookup($subject, 'users.read');
         $cached->create($subject, $createUsers);
 
+        self::assertNull($projections->load($subject));
+
         $permissions = $cached->lookup($subject, 'users.create');
-        $projection  = $projections->load($subject);
 
         self::assertSame(['users.create'], $permissions->codes());
         self::assertFalse($permissions->find('users.create')?->state()->isDenied());
-        self::assertSame([
-            'users.read'   => 1,
-            'users.create' => 1,
-        ], $projection?->toArray()['permissions']);
     }
 
-    public function test_update_overwrites_the_cached_permission_state_without_reloading_the_source_repository(): void
+    public function test_update_forgets_the_cached_projection_and_rebuilds_from_the_source(): void
     {
         $subject          = $this->cachedSubject();
         $permission       = $this->cachedSubjectPermission(10, 'users.read');
         $deniedPermission = $this->cachedSubjectPermission(10, 'users.read', true);
 
         $repository = $this->createMock(SubjectPermissionRepository::class);
-        $repository->expects(self::never())
-                   ->method('allOf');
+        $repository->expects(self::once())
+                   ->method('allOf')
+                   ->with($subject)
+                   ->willReturn(new SubjectPermissions([$deniedPermission]));
         $repository->expects(self::once())
                    ->method('update')
                    ->with($subject, $deniedPermission);
 
-        $projections = $this->projectionCache();
+        $projections = $this->projectionCache(permissions: $repository);
         $projections->save($subject, $this->projection([], [$permission]));
 
         $cached = new CachedSubjectPermissionRepository(
@@ -149,13 +151,13 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
             $projections,
         );
 
-        $cached->lookup($subject, 'users.read');
         $cached->update($subject, $deniedPermission);
 
+        self::assertNull($projections->load($subject));
         self::assertTrue($cached->lookup($subject, 'users.read')->find('users.read')?->state()->isDenied());
     }
 
-    public function test_update_preserves_a_role_grant_while_the_owned_permission_becomes_denied(): void
+    public function test_update_does_not_modify_the_existing_projection(): void
     {
         $subject          = $this->cachedSubject();
         $deniedPermission = $this->cachedSubjectPermission(10, 'users.read', true);
@@ -174,14 +176,7 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
 
         $cached->update($subject, $deniedPermission);
 
-        self::assertSame(
-            SubjectPermissionState::DeniedInherited,
-            $projections->load($subject)?->permissions()->find('users.read')?->state(),
-        );
-        self::assertSame(
-            SubjectPermissionState::Denied,
-            $cached->lookup($subject, 'users.read')->find('users.read')?->state(),
-        );
+        self::assertNull($projections->load($subject));
     }
 
     public function test_remove_forgets_the_subject_projection_and_reloads_it_on_the_next_lookup(): void
@@ -234,5 +229,53 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
         $cached->purge($subject);
 
         self::assertNull($projections->load($subject));
+    }
+
+    public function test_create_failure_does_not_forget_the_subject_projection(): void
+    {
+        $subject    = $this->cachedSubject();
+        $permission = $this->cachedSubjectPermission(10, 'users.read');
+        $repository = $this->createMock(SubjectPermissionRepository::class);
+        $repository->expects(self::once())
+                   ->method('create')
+                   ->willThrowException(new RuntimeException('create failed'));
+
+        $projections = $this->projectionCache();
+        $projection  = $this->projection(permissions: [$permission]);
+        $projections->save($subject, $projection);
+        $cached = new CachedSubjectPermissionRepository($repository, $projections);
+
+        try {
+            $cached->create($subject, $permission);
+            self::fail('Expected create to fail.');
+        } catch (RuntimeException $exception) {
+            self::assertSame('create failed', $exception->getMessage());
+        }
+
+        self::assertSame($projection->toArray(), $projections->load($subject)?->toArray());
+    }
+
+    public function test_update_failure_does_not_forget_the_subject_projection(): void
+    {
+        $subject    = $this->cachedSubject();
+        $permission = $this->cachedSubjectPermission(10, 'users.read');
+        $repository = $this->createMock(SubjectPermissionRepository::class);
+        $repository->expects(self::once())
+                   ->method('update')
+                   ->willThrowException(new RuntimeException('update failed'));
+
+        $projections = $this->projectionCache();
+        $projection  = $this->projection(permissions: [$permission]);
+        $projections->save($subject, $projection);
+        $cached = new CachedSubjectPermissionRepository($repository, $projections);
+
+        try {
+            $cached->update($subject, $permission);
+            self::fail('Expected update to fail.');
+        } catch (RuntimeException $exception) {
+            self::assertSame('update failed', $exception->getMessage());
+        }
+
+        self::assertSame($projection->toArray(), $projections->load($subject)?->toArray());
     }
 }

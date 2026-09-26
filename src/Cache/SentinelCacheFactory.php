@@ -52,7 +52,7 @@ final readonly class SentinelCacheFactory
             roleRepository             : new CachedRoleRepository($roles, $this->store),
             permissionRepository       : new CachedPermissionRepository($permissions, $this->store),
             rolePermissionRepository   : new CachedRolePermissionRepository($rolePermissions, $this->store),
-            subjectRoleRepository      : new CachedSubjectRoleRepository($subjectRoles, $rolePermissions, $projections),
+            subjectRoleRepository      : new CachedSubjectRoleRepository($subjectRoles, $projections),
             subjectPermissionRepository: new CachedSubjectPermissionRepository($subjectPermissions, $projections),
         );
     }

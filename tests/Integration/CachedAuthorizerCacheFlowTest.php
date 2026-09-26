@@ -116,37 +116,60 @@ final class CachedAuthorizerCacheFlowTest extends TestCase
         self::assertSame(['roles' => 1, 'grants' => 1, 'permissions' => 1], $calls);
     }
 
-    public function test_assigning_a_role_updates_only_that_subjects_warm_projection(): void
+    public function test_assigning_a_role_forgets_only_that_subjects_projection(): void
     {
-        $first       = new TestSubject(1);
-        $second      = new TestSubject(2);
-        $role        = new TestRole(20, 'editor', 'Editor');
-        $permission  = new TestPermission(10, 'posts.edit', 'Edit Posts');
-        $firstCalls  = $this->persistenceCalls();
-        $secondCalls = $this->persistenceCalls();
+        $first         = new TestSubject(1);
+        $second        = new TestSubject(2);
+        $role          = new TestRole(20, 'editor', 'Editor');
+        $permission    = new TestPermission(10, 'posts.edit', 'Edit Posts');
+        $firstCalls    = $this->persistenceCalls();
+        $secondCalls   = $this->persistenceCalls();
+        $firstHasRole  = false;
+        $secondHasRole = false;
 
         $subjectRoles = $this->createMock(SubjectRoleRepository::class);
-        $subjectRoles->method('allOf')
-                     ->willReturnCallback(function (TestSubject $subject) use (&$firstCalls, &$secondCalls, $first): Authorizations {
-                         if ($subject === $first) {
-                             $firstCalls['roles']++;
-                         } else {
-                             $secondCalls['roles']++;
-                         }
+        $subjectRoles->method('allOf')->willReturnCallback(function (TestSubject $subject) use (
+            &$firstCalls,
+            &$secondCalls,
+            $first,
+            &$firstHasRole,
+            &$secondHasRole,
+            $role,
+        ): Authorizations {
+            if ($subject === $first) {
+                $firstCalls['roles']++;
+            } else {
+                $secondCalls['roles']++;
+            }
 
-                         return new Authorizations([]);
-                     });
-        $subjectRoles->method('grants')
-                     ->willReturnCallback(function (TestSubject $subject) use (&$firstCalls, &$secondCalls, $first): Authorizations {
-                         if ($subject === $first) {
-                             $firstCalls['grants']++;
-                         } else {
-                             $secondCalls['grants']++;
-                         }
+            return ($subject === $first ? $firstHasRole : $secondHasRole)
+                ? new Authorizations([$role])
+                : new Authorizations([]);
+        });
+        $subjectRoles->method('grants')->willReturnCallback(function (TestSubject $subject) use (
+            &$firstCalls,
+            &$secondCalls,
+            $first,
+            &$firstHasRole,
+            &$secondHasRole,
+            $permission,
+        ): Authorizations {
+            if ($subject === $first) {
+                $firstCalls['grants']++;
+            } else {
+                $secondCalls['grants']++;
+            }
 
-                         return new Authorizations([]);
+            return ($subject === $first ? $firstHasRole : $secondHasRole)
+                ? new Authorizations([$permission])
+                : new Authorizations([]);
+        });
+        $subjectRoles->expects(self::once())
+                     ->method('create')
+                     ->with($first, $role)
+                     ->willReturnCallback(function () use (&$firstHasRole): void {
+                         $firstHasRole = true;
                      });
-        $subjectRoles->expects(self::once())->method('create')->with($first, $role);
 
         $subjectPermissions = $this->createMock(SubjectPermissionRepository::class);
         $subjectPermissions->method('allOf')
@@ -165,10 +188,7 @@ final class CachedAuthorizerCacheFlowTest extends TestCase
                            });
 
         $rolePermissions = $this->createMock(RolePermissionRepository::class);
-        $rolePermissions->expects(self::once())
-                        ->method('allOf')
-                        ->with($role)
-                        ->willReturn(new Authorizations([$permission]));
+        $rolePermissions->expects(self::never())->method('allOf');
 
         [$authorizer, $cached] = $this->cachedContext($subjectRoles, $subjectPermissions, $rolePermissions);
 
@@ -181,7 +201,7 @@ final class CachedAuthorizerCacheFlowTest extends TestCase
 
         self::assertTrue($authorizer->can($first, ['posts.edit']));
         self::assertFalse($authorizer->can($second, ['posts.edit']));
-        self::assertSame(['roles' => 1, 'grants' => 1, 'permissions' => 1], $firstCalls);
+        self::assertSame(['roles' => 2, 'grants' => 2, 'permissions' => 2], $firstCalls);
         self::assertSame(['roles' => 1, 'grants' => 1, 'permissions' => 1], $secondCalls);
     }
 
@@ -281,10 +301,13 @@ final class CachedAuthorizerCacheFlowTest extends TestCase
         self::assertSame(['roles' => 1, 'grants' => 1, 'permissions' => 1], $secondCalls);
     }
 
-    public function test_creating_and_updating_a_subject_permission_keep_its_projection_warm(): void
+    public function test_creating_and_updating_a_subject_permission_forget_its_projection(): void
     {
-        $subject = new TestSubject(1);
-        $calls   = $this->persistenceCalls();
+        $subject       = new TestSubject(1);
+        $permission    = new TestPermission(10, 'posts.edit', 'Edit Posts');
+        $calls         = $this->persistenceCalls();
+        $hasPermission = false;
+        $isDenied      = false;
 
         $subjectRoles = $this->createMock(SubjectRoleRepository::class);
         $subjectRoles->method('allOf')
@@ -302,17 +325,27 @@ final class CachedAuthorizerCacheFlowTest extends TestCase
 
         $subjectPermissions = $this->createMock(SubjectPermissionRepository::class);
         $subjectPermissions->method('allOf')
-                           ->willReturnCallback(function () use (&$calls): SubjectPermissions {
+                           ->willReturnCallback(function () use (&$calls, $permission, &$hasPermission, &$isDenied): SubjectPermissions {
                                $calls['permissions']++;
 
-                               return new SubjectPermissions([]);
+                               return $hasPermission
+                                   ? new SubjectPermissions([TestSubjectPermission::from($permission, $isDenied)])
+                                   : new SubjectPermissions([]);
                            });
         $subjectPermissions->expects(self::once())
                            ->method('create')
-                           ->with($subject, new SubjectPermissionSnapshot(10, 'posts.edit'));
+                           ->with($subject, new SubjectPermissionSnapshot(10, 'posts.edit'))
+                           ->willReturnCallback(function () use (&$hasPermission, &$isDenied): void {
+                               $hasPermission = true;
+                               $isDenied      = false;
+                           });
         $subjectPermissions->expects(self::once())
                            ->method('update')
-                           ->with($subject, new SubjectPermissionSnapshot(10, 'posts.edit', true));
+                           ->with($subject, new SubjectPermissionSnapshot(10, 'posts.edit', true))
+                           ->willReturnCallback(function () use (&$hasPermission, &$isDenied): void {
+                               $hasPermission = true;
+                               $isDenied      = true;
+                           });
 
         [$authorizer, $cached] = $this->cachedContext(
             $subjectRoles,
@@ -326,12 +359,15 @@ final class CachedAuthorizerCacheFlowTest extends TestCase
         $cached->subjectPermissionRepository()->create($subject, new SubjectPermissionSnapshot(10, 'posts.edit'));
 
         self::assertTrue($authorizer->can($subject, ['posts.edit']));
-        self::assertSame(['roles' => 1, 'grants' => 1, 'permissions' => 1], $calls);
+        self::assertSame(['roles' => 2, 'grants' => 2, 'permissions' => 2], $calls);
 
         $cached->subjectPermissionRepository()->update($subject, new SubjectPermissionSnapshot(10, 'posts.edit', true));
 
         self::assertFalse($authorizer->can($subject, ['posts.edit']));
-        self::assertSame(['roles' => 1, 'grants' => 1, 'permissions' => 1], $calls);
+        self::assertSame(['roles' => 3, 'grants' => 3, 'permissions' => 3], $calls);
+
+        self::assertFalse($authorizer->can($subject, ['posts.edit']));
+        self::assertSame(['roles' => 3, 'grants' => 3, 'permissions' => 3], $calls);
     }
 
     public function test_removing_a_subject_permission_rebuilds_once_then_returns_to_a_warm_cache(): void
