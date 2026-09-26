@@ -69,4 +69,9 @@ final class InMemorySubjectPermissionRepository implements SubjectPermissionRepo
             unset($this->items[Identifiers::value($subject->id())][$permission->code()]);
         }
     }
+
+    public function purge(Subject $subject): void
+    {
+        unset($this->items[Identifiers::value($subject->id())]);
+    }
 }

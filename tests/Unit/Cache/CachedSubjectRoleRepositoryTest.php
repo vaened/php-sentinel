@@ -140,4 +140,28 @@ final class CachedSubjectRoleRepositoryTest extends CacheTestCase
 
         $cached->lookup($subject, 'admin');
     }
+
+    public function test_purge_delegates_and_forgets_the_subject_projection(): void
+    {
+        $subject    = $this->cachedSubject();
+        $repository = $this->createMock(SubjectRoleRepository::class);
+        $repository->expects(self::once())
+                   ->method('purge')
+                   ->with($subject);
+
+        $projections = $this->projectionCache();
+        $projections->save($subject, $this->projection([
+            $this->cachedRole(10, 'cashier', 'Cashier'),
+        ]));
+
+        $cached = new CachedSubjectRoleRepository(
+            $repository,
+            $this->createStub(RolePermissionRepository::class),
+            $projections,
+        );
+
+        $cached->purge($subject);
+
+        self::assertNull($projections->load($subject));
+    }
 }

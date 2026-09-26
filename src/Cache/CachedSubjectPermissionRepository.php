@@ -66,6 +66,12 @@ final readonly class CachedSubjectPermissionRepository implements SubjectPermiss
         $this->projections->forget($subject);
     }
 
+    public function purge(Subject $subject): void
+    {
+        $this->repository->purge($subject);
+        $this->projections->forget($subject);
+    }
+
     private function saveProjection(Subject $subject, SubjectPermissionSnapshot ...$permissions): void
     {
         $projection = $this->projections->loadOrBuild($subject);

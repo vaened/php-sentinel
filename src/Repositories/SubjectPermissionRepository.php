@@ -29,4 +29,6 @@ interface SubjectPermissionRepository
     public function update(Subject $subject, SubjectPermissionSnapshot ...$permissions): void;
 
     public function remove(Subject $subject, SubjectPermissionSnapshot ...$permissions): void;
+
+    public function purge(Subject $subject): void;
 }

@@ -182,6 +182,28 @@ final class CachedAuthorizerFlowTest extends TestCase
         $this->assertProjectionState($permission, SubjectPermissionState::Inherited);
     }
 
+    public function test_purging_a_subject_removes_all_roles_permissions_and_cached_authorization(): void
+    {
+        [$role, $permission] = $this->createRolePermission();
+        $denied = $this->repositories->permissionRepository()->create('posts.delete', 'Delete Posts');
+
+        $this->granter->grant($this->subject, $permission);
+        $this->granter->grant($this->subject, $role);
+        $this->denier->deny($this->subject, $denied);
+
+        self::assertTrue($this->authorizer->can($this->subject, [$permission->code()]));
+        self::assertFalse($this->authorizer->can($this->subject, [$denied->code()]));
+        self::assertTrue($this->authorizer->is($this->subject, [$role->code()]));
+
+        $this->revoker->purge($this->subject);
+
+        self::assertFalse($this->authorizer->can($this->subject, [$permission->code()]));
+        self::assertFalse($this->authorizer->can($this->subject, [$denied->code()]));
+        self::assertFalse($this->authorizer->is($this->subject, [$role->code()]));
+        self::assertTrue($this->subjectPermissions->allOf($this->subject)->isEmpty());
+        self::assertTrue($this->repositories->subjectRoleRepository()->allOf($this->subject)->isEmpty());
+    }
+
     /**
      * @return array{Role, Permission}
      */

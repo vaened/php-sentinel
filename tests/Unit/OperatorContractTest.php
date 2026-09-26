@@ -39,25 +39,22 @@ final class OperatorContractTest extends TestCase
 
         $permissionRepository = $this->createMock(PermissionRepository::class);
         $permissionRepository->method('lookup')
-            ->willReturnCallback(function () use (&$callOrder, $permission): Permissions
-            {
-                $callOrder[] = 'catalog.lookup';
-                return new Permissions([$permission]);
-            });
+                             ->willReturnCallback(function () use (&$callOrder, $permission): Permissions {
+                                 $callOrder[] = 'catalog.lookup';
+                                 return new Permissions([$permission]);
+                             });
 
         $subjectPermissionRepository = $this->createMock(SubjectPermissionRepository::class);
         $subjectPermissionRepository->method('lookup')
-            ->willReturnCallback(function () use (&$callOrder): SubjectPermissions
-            {
-                $callOrder[] = 'subject_assignment.lookup';
-                return new SubjectPermissions([]);
-            });
+                                    ->willReturnCallback(function () use (&$callOrder): SubjectPermissions {
+                                        $callOrder[] = 'subject_assignment.lookup';
+                                        return new SubjectPermissions([]);
+                                    });
         $subjectPermissionRepository->expects($this->once())
-            ->method('create')
-            ->willReturnCallback(function () use (&$callOrder): void
-            {
-                $callOrder[] = 'subject_assignment.create';
-            });
+                                    ->method('create')
+                                    ->willReturnCallback(function () use (&$callOrder): void {
+                                        $callOrder[] = 'subject_assignment.create';
+                                    });
 
         $granter = new Granter(
             $this->createMock(RoleRepository::class),
@@ -81,7 +78,7 @@ final class OperatorContractTest extends TestCase
 
         $permissionRepository = $this->createMock(PermissionRepository::class);
         $permissionRepository->method('lookup')
-            ->willThrowException(new RuntimeException('DB connection lost'));
+                             ->willThrowException(new RuntimeException('DB connection lost'));
 
         $granter = new Granter(
             $this->createMock(RoleRepository::class),
@@ -103,14 +100,14 @@ final class OperatorContractTest extends TestCase
 
         $permissionRepository = $this->createMock(PermissionRepository::class);
         $permissionRepository->method('lookup')
-            ->willReturn(new Permissions([$permission]));
+                             ->willReturn(new Permissions([$permission]));
 
         $subjectPermissionRepository = $this->createMock(SubjectPermissionRepository::class);
         $subjectPermissionRepository->method('lookup')
-            ->willReturn(new SubjectPermissions([]));
+                                    ->willReturn(new SubjectPermissions([]));
 
         $subjectPermissionRepository->expects($this->never())
-            ->method('remove');
+                                    ->method('remove');
 
         $revoker = new Revoker(
             $this->createMock(RoleRepository::class),
@@ -129,18 +126,17 @@ final class OperatorContractTest extends TestCase
 
         $permissionRepository = $this->createMock(PermissionRepository::class);
         $permissionRepository->method('lookup')
-            ->willReturn(new Permissions([$permission]));
+                             ->willReturn(new Permissions([$permission]));
 
         $subjectPermissionRepository = $this->createMock(SubjectPermissionRepository::class);
         $subjectPermissionRepository->method('lookup')
-            ->willReturn(new SubjectPermissions([]));
+                                    ->willReturn(new SubjectPermissions([]));
 
         $subjectPermissionRepository->expects($this->once())
-            ->method('create')
-            ->willReturnCallback(function (Subject $subject, SubjectPermission ...$permissions): void
-            {
-                self::assertTrue($permissions[0]->isDenied());
-            });
+                                    ->method('create')
+                                    ->willReturnCallback(function (Subject $subject, SubjectPermission ...$permissions): void {
+                                        self::assertTrue($permissions[0]->isDenied());
+                                    });
 
         $denier = new Denier(
             $this->createMock(RoleRepository::class),
@@ -149,5 +145,30 @@ final class OperatorContractTest extends TestCase
         );
 
         $denier->deny(new TestSubject(1), $permission);
+    }
+
+    public function test_purge_removes_all_subject_authorizations_without_catalog_lookups(): void
+    {
+        $subject = new TestSubject(1);
+
+        $subjectRoles = $this->createMock(SubjectRoleRepository::class);
+        $subjectRoles->expects($this->once())
+                     ->method('purge')
+                     ->with($subject);
+
+        $subjectPermissions = $this->createMock(SubjectPermissionRepository::class);
+        $subjectPermissions->expects($this->once())
+                           ->method('purge')
+                           ->with($subject);
+
+        $revoker = new Revoker(
+            $this->createMock(RoleRepository::class),
+            $this->createMock(PermissionRepository::class),
+            $subjectRoles,
+            $subjectPermissions,
+            $this->createMock(RolePermissionRepository::class),
+        );
+
+        $revoker->purge($subject);
     }
 }

@@ -44,6 +44,12 @@ final readonly class Revoker extends Operator
         $this->bind($owner, ...$authorizations);
     }
 
+    public function purge(Subject $subject): void
+    {
+        $this->subjectPermissions->purge($subject);
+        $this->subjectRoles->purge($subject);
+    }
+
     protected function forRoles(Subject $owner, Roles $roles): void
     {
         $available = $this->takeRolesOrFail($roles);

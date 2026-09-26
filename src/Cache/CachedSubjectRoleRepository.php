@@ -80,4 +80,10 @@ final readonly class CachedSubjectRoleRepository implements SubjectRoleRepositor
         $this->repository->remove($subject, ...$roles);
         $this->projections->forget($subject);
     }
+
+    public function purge(Subject $subject): void
+    {
+        $this->repository->purge($subject);
+        $this->projections->forget($subject);
+    }
 }

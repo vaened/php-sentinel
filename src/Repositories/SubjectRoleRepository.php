@@ -29,4 +29,6 @@ interface SubjectRoleRepository
     public function create(Subject $subject, Role ...$roles): void;
 
     public function remove(Subject $subject, Role ...$roles): void;
+
+    public function purge(Subject $subject): void;
 }

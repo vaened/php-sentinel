@@ -215,4 +215,24 @@ final class CachedSubjectPermissionRepositoryTest extends CacheTestCase
 
         $cached->lookup($subject, 'users.update');
     }
+
+    public function test_purge_delegates_and_forgets_the_subject_projection(): void
+    {
+        $subject    = $this->cachedSubject();
+        $repository = $this->createMock(SubjectPermissionRepository::class);
+        $repository->expects(self::once())
+                   ->method('purge')
+                   ->with($subject);
+
+        $projections = $this->projectionCache();
+        $projections->save($subject, $this->projection(permissions: [
+            $this->cachedSubjectPermission(10, 'users.read'),
+        ]));
+
+        $cached = new CachedSubjectPermissionRepository($repository, $projections);
+
+        $cached->purge($subject);
+
+        self::assertNull($projections->load($subject));
+    }
 }

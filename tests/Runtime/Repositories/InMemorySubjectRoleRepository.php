@@ -29,7 +29,8 @@ final class InMemorySubjectRoleRepository implements SubjectRoleRepository
 
     public function __construct(
         protected RolePermissionRepository $rolePermissions,
-    ) {
+    )
+    {
     }
 
     public function lookup(Subject $subject, string ...$codes): Roles
@@ -86,5 +87,10 @@ final class InMemorySubjectRoleRepository implements SubjectRoleRepository
         foreach ($roles as $role) {
             unset($this->items[Identifiers::value($subject->id())][$role->code()]);
         }
+    }
+
+    public function purge(Subject $subject): void
+    {
+        unset($this->items[Identifiers::value($subject->id())]);
     }
 }
