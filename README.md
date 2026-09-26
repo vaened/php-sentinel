@@ -99,6 +99,7 @@ Repositories persist both the catalog and the relationships between subjects, ro
     - `grants($subject, $codes)` resolves permissions inherited through the subject’s roles:
         - `null` resolves every inherited permission.
         - A populated array resolves only matching permission codes.
+    - `purge($subject)` removes every role assignment for a subject.
 
 - **SubjectPermissionRepository**
     - Contract: [`SubjectPermissionRepository`](src/Repositories/SubjectPermissionRepository.php)
@@ -106,6 +107,7 @@ Repositories persist both the catalog and the relationships between subjects, ro
     - Persisted assignments resolve to `Denied` or `Direct`. `Inherited` is derived at runtime by Sentinel when a permission comes from a
       role.
         - Writes receive `SubjectPermissionSnapshot` value objects.
+    - `purge($subject)` removes every direct permission assignment and denial for a subject.
 
 - **RolePermissionRepository**
     - Contract: [`RolePermissionRepository`](src/Repositories/RolePermissionRepository.php)
@@ -113,7 +115,7 @@ Repositories persist both the catalog and the relationships between subjects, ro
     - Roles only grant permissions; they do not support explicit denials.
 
 Each repository exposes the combination of `lookup`, `grants`, `exists`, `allOf`, `create`, `update`, and `remove` that belongs to its
-own contract.
+own contract. Subject role and subject permission repositories also expose `purge($subject)` for complete subject authorization cleanup.
 
 ### Entry providers
 
@@ -143,11 +145,13 @@ Sentinel caches the **effective authorization projection of a subject**: the ass
 whether direct or inherited through a role. That projection is built once per subject and then reused on every subsequent `can` / `is`
 check.
 
-For cached permissions, Sentinel preserves three states:
+For cached permissions, Sentinel preserves the authorization state and its provenance:
 
 - `Denied` — direct deny on the subject
 - `Direct` — direct grant on the subject
 - `Inherited` — grant inherited through a role
+- `DeniedInherited` — direct deny on the subject and a grant inherited through a role
+- `DirectInherited` — direct grant on the subject and a grant inherited through a role
 
 **What the cache does NOT do**:
 
@@ -370,9 +374,11 @@ assignment does not exist, it makes no changes.
 ```php
 $revoker->revoke($user, $admin);
 $revoker->revoke($user, $edit, $delete);
+$revoker->purge($user);                         // remove every role and direct permission relation
 ```
 
-It accepts `Subject` or `Role` as owner.
+`revoke()` accepts `Subject` or `Role` as owner. `purge()` accepts only a `Subject` and removes every role assignment, direct permission,
+and explicit denial for that subject. It does not remove the subject or the global role and permission definitions.
 
 ## Registry
 
