@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel;
 
-interface Subject
+interface Subject extends Scopeable
 {
     public function id(): int|string|Identifier;
 }

@@ -19,11 +19,18 @@ final class TestSubject implements Subject
 {
     public function __construct(
         protected int|string|Identifier $id,
-    ) {
+        protected Subject|null          $scope = null,
+    )
+    {
     }
 
     public function id(): int|string|Identifier
     {
         return $this->id;
+    }
+
+    public function scope(): Subject|null
+    {
+        return $this->scope;
     }
 }

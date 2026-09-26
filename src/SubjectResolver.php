@@ -12,11 +12,10 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel;
 
-interface Role extends Authorization, Scopeable
+/**
+ * Resolves a subject without prescribing its source or coupling to a framework.
+ */
+interface SubjectResolver
 {
-    public function id(): int|string;
-
-    public function name(): string;
-
-    public function description(): string|null;
+    public function resolve(): Subject;
 }

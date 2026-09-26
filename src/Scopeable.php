@@ -12,11 +12,11 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel;
 
-interface Role extends Authorization, Scopeable
+/**
+ * Exposes the intrinsic authorization parent, or null when unscoped.
+ * The scope is a subject, not the actor making a request.
+ */
+interface Scopeable
 {
-    public function id(): int|string;
-
-    public function name(): string;
-
-    public function description(): string|null;
+    public function scope(): Subject|null;
 }
