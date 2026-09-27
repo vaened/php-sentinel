@@ -254,12 +254,19 @@ final class GranterTest extends TestCase
         RolePermissionRepository|null    $rolePermissions = null,
     ): Granter
     {
+        $roles              ??= $this->createStub(RoleRepository::class);
+        $permissions        ??= $this->createStub(PermissionRepository::class);
+        $subjectRoles       ??= $this->createStub(SubjectRoleRepository::class);
+        $subjectPermissions ??= $this->createStub(SubjectPermissionRepository::class);
+        $rolePermissions    ??= $this->createStub(RolePermissionRepository::class);
+
         return new Granter(
-            $roles ?? $this->createStub(RoleRepository::class),
-            $permissions ?? $this->createStub(PermissionRepository::class),
-            $subjectRoles ?? $this->createStub(SubjectRoleRepository::class),
-            $subjectPermissions ?? $this->createStub(SubjectPermissionRepository::class),
-            $rolePermissions ?? $this->createStub(RolePermissionRepository::class),
+            $roles,
+            $permissions,
+            $subjectRoles,
+            $subjectPermissions,
+            $rolePermissions,
+            $this->createAuthorizer($subjectPermissions, $subjectRoles),
         );
     }
 }

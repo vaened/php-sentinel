@@ -15,8 +15,6 @@ namespace Vaened\Sentinel\Tests\Integration\Authorization;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Vaened\Sentinel\Authorization\Authorizer;
 use Vaened\Sentinel\Authorization\Junction;
-use Vaened\Sentinel\Authorization\PermissionEntryProvider;
-use Vaened\Sentinel\Authorization\RoleEntryProvider;
 use Vaened\Sentinel\Operators\Granter;
 use Vaened\Sentinel\Operators\Revoker;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryPermissionRepository;
@@ -65,12 +63,14 @@ final class AuthorizerRoleTest extends TestCase
         $permissions        = new InMemoryPermissionRepository();
 
         $this->roles      = new InMemoryRoleRepository();
+        $this->authorizer = $this->createAuthorizer($subjectPermissions, $subjectRoles);
         $this->granter    = new Granter(
             $this->roles,
             $permissions,
             $subjectRoles,
             $subjectPermissions,
             $rolePermissions,
+            $this->authorizer,
         );
         $this->revoker    = new Revoker(
             $this->roles,
@@ -78,10 +78,6 @@ final class AuthorizerRoleTest extends TestCase
             $subjectRoles,
             $subjectPermissions,
             $rolePermissions,
-        );
-        $this->authorizer = new Authorizer(
-            new PermissionEntryProvider($subjectPermissions, $subjectRoles),
-            new RoleEntryProvider($subjectRoles),
         );
         $this->subject    = new TestSubject(1);
     }

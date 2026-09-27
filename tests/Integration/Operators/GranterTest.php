@@ -35,6 +35,8 @@ final class GranterTest extends TestCase
 
     private InMemorySubjectPermissionRepository $subjectPermissions;
 
+    private InMemorySubjectRoleRepository       $subjectRoles;
+
     private Granter                             $granter;
 
     protected function setUp(): void
@@ -45,13 +47,15 @@ final class GranterTest extends TestCase
         $this->roles              = new InMemoryRoleRepository();
         $this->rolePermissions    = new InMemoryRolePermissionRepository();
         $this->subjectPermissions = new InMemorySubjectPermissionRepository();
+        $this->subjectRoles       = new InMemorySubjectRoleRepository($this->rolePermissions);
 
         $this->granter = new Granter(
             $this->roles,
             $this->permissions,
-            new InMemorySubjectRoleRepository($this->rolePermissions),
+            $this->subjectRoles,
             $this->subjectPermissions,
             $this->rolePermissions,
+            $this->createAuthorizer($this->subjectPermissions, $this->subjectRoles),
         );
     }
 
@@ -103,13 +107,7 @@ final class GranterTest extends TestCase
         $role         = $roles->create('editor', 'Editor', scope: $scope);
         $rolePerms    = new InMemoryRolePermissionRepository();
         $subjectRoles = new InMemorySubjectRoleRepository($rolePerms);
-        $granter      = new Granter(
-            $roles,
-            new InMemoryPermissionRepository(),
-            $subjectRoles,
-            new InMemorySubjectPermissionRepository(),
-            $rolePerms,
-        );
+        $granter      = $this->createGranter($roles, $subjectRoles, $rolePerms);
 
         $granter->grant($subject, $role);
 
@@ -124,13 +122,7 @@ final class GranterTest extends TestCase
         $role         = $roles->create('editor', 'Editor');
         $rolePerms    = new InMemoryRolePermissionRepository();
         $subjectRoles = new InMemorySubjectRoleRepository($rolePerms);
-        $granter      = new Granter(
-            $roles,
-            new InMemoryPermissionRepository(),
-            $subjectRoles,
-            new InMemorySubjectPermissionRepository(),
-            $rolePerms,
-        );
+        $granter      = $this->createGranter($roles, $subjectRoles, $rolePerms);
 
         $granter->grant($subject, $role);
 
@@ -144,13 +136,7 @@ final class GranterTest extends TestCase
         $role         = $roles->create('editor', 'Editor');
         $rolePerms    = new InMemoryRolePermissionRepository();
         $subjectRoles = new InMemorySubjectRoleRepository($rolePerms);
-        $granter      = new Granter(
-            $roles,
-            new InMemoryPermissionRepository(),
-            $subjectRoles,
-            new InMemorySubjectPermissionRepository(),
-            $rolePerms,
-        );
+        $granter      = $this->createGranter($roles, $subjectRoles, $rolePerms);
 
         $granter->grant($subject, $role);
 
@@ -165,13 +151,7 @@ final class GranterTest extends TestCase
         $role         = $roles->create('editor', 'Editor', scope: $scope);
         $rolePerms    = new InMemoryRolePermissionRepository();
         $subjectRoles = new InMemorySubjectRoleRepository($rolePerms);
-        $granter      = new Granter(
-            $roles,
-            new InMemoryPermissionRepository(),
-            $subjectRoles,
-            new InMemorySubjectPermissionRepository(),
-            $rolePerms,
-        );
+        $granter      = $this->createGranter($roles, $subjectRoles, $rolePerms);
 
         $this->expectException(InvalidAuthorization::class);
         $this->expectExceptionMessage(
@@ -190,13 +170,7 @@ final class GranterTest extends TestCase
         $role         = $roles->create('editor', 'Editor', scope: $roleScope);
         $rolePerms    = new InMemoryRolePermissionRepository();
         $subjectRoles = new InMemorySubjectRoleRepository($rolePerms);
-        $granter      = new Granter(
-            $roles,
-            new InMemoryPermissionRepository(),
-            $subjectRoles,
-            new InMemorySubjectPermissionRepository(),
-            $rolePerms,
-        );
+        $granter      = $this->createGranter($roles, $subjectRoles, $rolePerms);
 
         $this->expectException(InvalidAuthorization::class);
         $this->expectExceptionMessage(
@@ -215,13 +189,7 @@ final class GranterTest extends TestCase
         $forged       = new TestRole($stored->id(), $stored->code(), $stored->name());
         $rolePerms    = new InMemoryRolePermissionRepository();
         $subjectRoles = new InMemorySubjectRoleRepository($rolePerms);
-        $granter      = new Granter(
-            $roles,
-            new InMemoryPermissionRepository(),
-            $subjectRoles,
-            new InMemorySubjectPermissionRepository(),
-            $rolePerms,
-        );
+        $granter      = $this->createGranter($roles, $subjectRoles, $rolePerms);
 
         $this->expectException(InvalidAuthorization::class);
         $this->expectExceptionMessage(
@@ -229,5 +197,120 @@ final class GranterTest extends TestCase
         );
 
         $granter->grant($subject, $forged);
+    }
+
+    public function test_grant_rejects_a_subject_permission_not_allowed_by_its_scope(): void
+    {
+        $scope      = new TestSubject(2);
+        $subject    = new TestSubject(1, $scope);
+        $permission = $this->permissions->create('posts.edit', 'Edit Posts');
+
+        try {
+            $this->granter->grant($subject, $permission);
+            self::fail('Expected a permission that exceeds the subject scope to be rejected.');
+        } catch (InvalidAuthorization) {
+            self::assertTrue($this->subjectPermissions->allOf($subject)->isEmpty());
+        }
+    }
+
+    public function test_grant_allows_a_subject_permission_allowed_by_its_scope(): void
+    {
+        $scope      = new TestSubject(2);
+        $subject    = new TestSubject(1, $scope);
+        $permission = $this->permissions->create('posts.edit', 'Edit Posts');
+        $this->subjectPermissions->create(
+            $scope,
+            new SubjectPermissionSnapshot($permission->id(), $permission->code()),
+        );
+
+        $this->granter->grant($subject, $permission);
+
+        self::assertSame(
+            SubjectPermissionState::Direct,
+            $this->subjectPermissions->lookup($subject, $permission->code())->find($permission->code())?->state(),
+        );
+    }
+
+    public function test_grant_rejects_a_subject_permission_not_allowed_by_an_ancestor_scope(): void
+    {
+        $ancestor   = new TestSubject(3);
+        $scope      = new TestSubject(2, $ancestor);
+        $subject    = new TestSubject(1, $scope);
+        $permission = $this->permissions->create('posts.edit', 'Edit Posts');
+        $this->subjectPermissions->create(
+            $scope,
+            new SubjectPermissionSnapshot($permission->id(), $permission->code()),
+        );
+
+        try {
+            $this->granter->grant($subject, $permission);
+            self::fail('Expected a permission that exceeds an ancestor scope to be rejected.');
+        } catch (InvalidAuthorization) {
+            self::assertTrue($this->subjectPermissions->allOf($subject)->isEmpty());
+        }
+    }
+
+    public function test_grant_rejects_a_role_permission_not_allowed_by_the_roles_scope(): void
+    {
+        $scope      = new TestSubject(2);
+        $role       = $this->roles->create('editor', 'Editor', scope: $scope);
+        $permission = $this->permissions->create('posts.edit', 'Edit Posts');
+
+        try {
+            $this->granter->grant($role, $permission);
+            self::fail('Expected a permission that exceeds the role scope to be rejected.');
+        } catch (InvalidAuthorization) {
+            self::assertTrue($this->rolePermissions->allOf($role)->isEmpty());
+        }
+    }
+
+    public function test_grant_rejects_a_role_with_a_permission_not_allowed_by_the_subjects_scope(): void
+    {
+        $scope      = new TestSubject(2);
+        $subject    = new TestSubject(1, $scope);
+        $role       = $this->roles->create('editor', 'Editor', scope: $scope);
+        $permission = $this->permissions->create('posts.edit', 'Edit Posts');
+        $this->rolePermissions->create($role, $permission);
+
+        try {
+            $this->granter->grant($subject, $role);
+            self::fail('Expected a role that exceeds the subject scope to be rejected.');
+        } catch (InvalidAuthorization) {
+            self::assertTrue($this->subjectRoles->allOf($subject)->isEmpty());
+        }
+    }
+
+    public function test_grant_does_not_partially_assign_roles_when_a_direct_permission_exceeds_scope(): void
+    {
+        $scope      = new TestSubject(2);
+        $subject    = new TestSubject(1, $scope);
+        $role       = $this->roles->create('editor', 'Editor', scope: $scope);
+        $permission = $this->permissions->create('posts.edit', 'Edit Posts');
+
+        try {
+            $this->granter->grant($subject, $role, $permission);
+            self::fail('Expected an authorization that exceeds the subject scope to be rejected.');
+        } catch (InvalidAuthorization) {
+            self::assertTrue($this->subjectRoles->allOf($subject)->isEmpty());
+            self::assertTrue($this->subjectPermissions->allOf($subject)->isEmpty());
+        }
+    }
+
+    private function createGranter(
+        InMemoryRoleRepository           $roles,
+        InMemorySubjectRoleRepository    $subjectRoles,
+        InMemoryRolePermissionRepository $rolePermissions,
+    ): Granter
+    {
+        $subjectPermissions = new InMemorySubjectPermissionRepository();
+
+        return new Granter(
+            $roles,
+            new InMemoryPermissionRepository(),
+            $subjectRoles,
+            $subjectPermissions,
+            $rolePermissions,
+            $this->createAuthorizer($subjectPermissions, $subjectRoles),
+        );
     }
 }

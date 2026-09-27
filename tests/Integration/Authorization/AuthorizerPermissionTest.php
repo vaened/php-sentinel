@@ -14,6 +14,7 @@ namespace Vaened\Sentinel\Tests\Integration\Authorization;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
+use Vaened\Sentinel\Authorization;
 use Vaened\Sentinel\Authorization\Authorizer;
 use Vaened\Sentinel\Authorization\Junction;
 use Vaened\Sentinel\Authorization\PermissionEntryProvider;
@@ -22,11 +23,14 @@ use Vaened\Sentinel\Errors\ScopeCycleDetected;
 use Vaened\Sentinel\Operators\Denier;
 use Vaened\Sentinel\Operators\Granter;
 use Vaened\Sentinel\Operators\Revoker;
+use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
+use Vaened\Sentinel\Permission;
 use Vaened\Sentinel\Propagation\DirectScopePropagationPolicy;
 use Vaened\Sentinel\Propagation\ScopePropagationPolicy;
 use Vaened\Sentinel\Propagation\TransitiveScopePropagationPolicy;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
+use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Subject;
 use Vaened\Sentinel\SubjectPermissions;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryPermissionRepository;
@@ -62,6 +66,8 @@ final class AuthorizerPermissionTest extends TestCase
 
     private InMemorySubjectRoleRepository       $subjectRoles;
 
+    private InMemoryRolePermissionRepository    $rolePermissions;
+
     public static function permissionEvaluationCases(): iterable
     {
         $cases = require dirname(__DIR__, 2) . '/Fixtures/authorizer-evaluation.php';
@@ -85,18 +91,20 @@ final class AuthorizerPermissionTest extends TestCase
         parent::setUp();
 
         $this->subjectPermissions = new InMemorySubjectPermissionRepository();
-        $rolePermissions          = new InMemoryRolePermissionRepository();
-        $this->subjectRoles       = new InMemorySubjectRoleRepository($rolePermissions);
+        $this->rolePermissions    = new InMemoryRolePermissionRepository();
+        $this->subjectRoles       = new InMemorySubjectRoleRepository($this->rolePermissions);
 
         $this->roles       = new InMemoryRoleRepository();
         $this->permissions = new InMemoryPermissionRepository();
+        $this->authorizer  = $this->createAuthorizer($this->subjectPermissions, $this->subjectRoles);
 
         $this->granter = new Granter(
             $this->roles,
             $this->permissions,
             $this->subjectRoles,
             $this->subjectPermissions,
-            $rolePermissions,
+            $this->rolePermissions,
+            $this->authorizer,
         );
 
         $this->denier = new Denier(
@@ -110,12 +118,7 @@ final class AuthorizerPermissionTest extends TestCase
             $this->permissions,
             $this->subjectRoles,
             $this->subjectPermissions,
-            $rolePermissions,
-        );
-
-        $this->authorizer = new Authorizer(
-            new PermissionEntryProvider($this->subjectPermissions, $this->subjectRoles),
-            new RoleEntryProvider($this->subjectRoles),
+            $this->rolePermissions,
         );
 
         $this->subject = new TestSubject(1);
@@ -201,11 +204,11 @@ final class AuthorizerPermissionTest extends TestCase
         $scope      = new TestSubject(2);
         $subject    = new TestSubject(1, $scope);
 
-        $this->granter->grant($subject, $permission);
+        $this->seed($subject, $permission);
 
         self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
 
-        $this->granter->grant($scope, $permission);
+        $this->seed($scope, $permission);
 
         self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
     }
@@ -217,9 +220,9 @@ final class AuthorizerPermissionTest extends TestCase
         $subject    = new TestSubject(1, $scope);
         $scopeRole  = $this->role('scope-admin');
 
-        $this->granter->grant($subject, $permission);
-        $this->granter->grant($scopeRole, $permission);
-        $this->granter->grant($scope, $scopeRole);
+        $this->seed($subject, $permission);
+        $this->seed($scopeRole, $permission);
+        $this->seed($scope, $scopeRole);
 
         self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
     }
@@ -230,9 +233,9 @@ final class AuthorizerPermissionTest extends TestCase
         $scope      = new TestSubject(2);
         $subject    = new TestSubject(1, $scope);
 
-        $this->granter->grant($this->role, $permission);
-        $this->granter->grant($subject, $this->role);
-        $this->granter->grant($scope, $permission);
+        $this->seed($this->role, $permission);
+        $this->seed($subject, $this->role);
+        $this->seed($scope, $permission);
 
         self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
     }
@@ -243,7 +246,7 @@ final class AuthorizerPermissionTest extends TestCase
         $scope      = new TestSubject(2);
         $subject    = new TestSubject(1, $scope);
 
-        $this->granter->grant($subject, $permission);
+        $this->seed($subject, $permission);
         $this->denier->deny($scope, $permission);
 
         self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
@@ -255,7 +258,7 @@ final class AuthorizerPermissionTest extends TestCase
         $permission = $this->permission('posts.edit');
         $subject    = new TestSubject(1, new TestSubject(2));
 
-        $this->granter->grant($subject, $permission);
+        $this->seed($subject, $permission);
 
         self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
     }
@@ -267,8 +270,8 @@ final class AuthorizerPermissionTest extends TestCase
         $scope   = new TestSubject(2);
         $subject = new TestSubject(1, $scope);
 
-        $this->granter->grant($subject, $posts);
-        $this->granter->grant($scope, $users);
+        $this->seed($subject, $posts);
+        $this->seed($scope, $users);
 
         self::assertFalse($this->authorizer->can($subject, ['posts.edit', 'users.delete'], Junction::Or));
     }
@@ -280,9 +283,8 @@ final class AuthorizerPermissionTest extends TestCase
         $scope   = new TestSubject(2);
         $subject = new TestSubject(1, $scope);
 
-        $this->granter->grant($subject, $posts);
-        $this->granter->grant($subject, $users);
-        $this->granter->grant($scope, $posts);
+        $this->seed($subject, $posts, $users);
+        $this->seed($scope, $posts);
 
         self::assertTrue($this->authorizer->can($subject, ['posts.edit', 'users.delete'], Junction::Or));
     }
@@ -294,13 +296,12 @@ final class AuthorizerPermissionTest extends TestCase
         $scope   = new TestSubject(2);
         $subject = new TestSubject(1, $scope);
 
-        $this->granter->grant($subject, $posts);
-        $this->granter->grant($subject, $users);
-        $this->granter->grant($scope, $posts);
+        $this->seed($subject, $posts, $users);
+        $this->seed($scope, $posts);
 
         self::assertFalse($this->authorizer->can($subject, ['posts.edit', 'users.delete'], Junction::And));
 
-        $this->granter->grant($scope, $users);
+        $this->seed($scope, $users);
 
         self::assertTrue($this->authorizer->can($subject, ['posts.edit', 'users.delete'], Junction::And));
     }
@@ -312,12 +313,12 @@ final class AuthorizerPermissionTest extends TestCase
         $scope      = new TestSubject(2, $root);
         $subject    = new TestSubject(1, $scope);
 
-        $this->granter->grant($subject, $permission);
-        $this->granter->grant($scope, $permission);
+        $this->seed($subject, $permission);
+        $this->seed($scope, $permission);
 
         self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
 
-        $this->granter->grant($root, $permission);
+        $this->seed($root, $permission);
 
         self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
     }
@@ -334,8 +335,8 @@ final class AuthorizerPermissionTest extends TestCase
             new DirectScopePropagationPolicy(),
         );
 
-        $this->granter->grant($subject, $permission);
-        $this->granter->grant($scope, $permission);
+        $this->seed($subject, $permission);
+        $this->seed($scope, $permission);
 
         self::assertTrue($authorizer->can($subject, ['posts.edit']));
     }
@@ -349,13 +350,13 @@ final class AuthorizerPermissionTest extends TestCase
         $subject    = new TestSubject(1, $scope);
         $authorizer = $this->scopedAuthorizer(new DirectScopePropagationPolicy());
 
-        $this->granter->grant($subject, $posts, $users);
-        $this->granter->grant($scope, $posts);
-        $this->granter->grant($root, $posts, $users);
+        $this->seed($subject, $posts, $users);
+        $this->seed($scope, $posts);
+        $this->seed($root, $posts, $users);
 
         self::assertFalse($authorizer->can($subject, ['posts.edit', 'users.delete'], Junction::And));
 
-        $this->granter->grant($scope, $users);
+        $this->seed($scope, $users);
 
         self::assertTrue($authorizer->can($subject, ['posts.edit', 'users.delete'], Junction::And));
     }
@@ -370,13 +371,13 @@ final class AuthorizerPermissionTest extends TestCase
         $subject    = new TestSubject(1, $scope);
         $authorizer = $this->scopedAuthorizer(new DirectScopePropagationPolicy());
 
-        $this->granter->grant($subject, $first);
-        $this->granter->grant($scope, $second);
-        $this->granter->grant($root, $third);
+        $this->seed($subject, $first);
+        $this->seed($scope, $second);
+        $this->seed($root, $third);
 
         self::assertFalse($authorizer->can($subject, ['first', 'second', 'third'], Junction::Or));
 
-        $this->granter->grant($scope, $first);
+        $this->seed($scope, $first);
 
         self::assertTrue($authorizer->can($subject, ['first', 'second', 'third'], Junction::Or));
     }
@@ -391,9 +392,9 @@ final class AuthorizerPermissionTest extends TestCase
         $subject    = new TestSubject(1, $scope);
         $authorizer = $this->scopedAuthorizer(new TransitiveScopePropagationPolicy());
 
-        $this->granter->grant($subject, $third);
-        $this->granter->grant($scope, $first);
-        $this->granter->grant($root, $second);
+        $this->seed($subject, $third);
+        $this->seed($scope, $first);
+        $this->seed($root, $second);
 
         self::assertFalse($authorizer->can($subject, ['first', 'second', 'third'], Junction::Or));
     }
@@ -408,9 +409,9 @@ final class AuthorizerPermissionTest extends TestCase
         $subject    = new TestSubject(1, $scope);
         $authorizer = $this->scopedAuthorizer(new TransitiveScopePropagationPolicy());
 
-        $this->granter->grant($subject, $first, $second, $third);
-        $this->granter->grant($scope, $first, $third);
-        $this->granter->grant($root, $third);
+        $this->seed($subject, $first, $second, $third);
+        $this->seed($scope, $first, $third);
+        $this->seed($root, $third);
 
         self::assertTrue($authorizer->can($subject, ['first', 'second', 'third'], Junction::Or));
     }
@@ -424,13 +425,13 @@ final class AuthorizerPermissionTest extends TestCase
         $subject    = new TestSubject(1, $scope);
         $authorizer = $this->scopedAuthorizer(new TransitiveScopePropagationPolicy());
 
-        $this->granter->grant($subject, $posts, $users);
-        $this->granter->grant($scope, $posts, $users);
-        $this->granter->grant($root, $posts);
+        $this->seed($subject, $posts, $users);
+        $this->seed($scope, $posts, $users);
+        $this->seed($root, $posts);
 
         self::assertFalse($authorizer->can($subject, ['posts.edit', 'users.delete'], Junction::And));
 
-        $this->granter->grant($root, $users);
+        $this->seed($root, $users);
 
         self::assertTrue($authorizer->can($subject, ['posts.edit', 'users.delete'], Junction::And));
     }
@@ -446,12 +447,12 @@ final class AuthorizerPermissionTest extends TestCase
         $rootRole    = $this->role('root-role');
         $authorizer  = $this->scopedAuthorizer(new TransitiveScopePropagationPolicy());
 
-        $this->granter->grant($subjectRole, $permission);
-        $this->granter->grant($scopeRole, $permission);
-        $this->granter->grant($rootRole, $permission);
-        $this->granter->grant($subject, $subjectRole);
-        $this->granter->grant($scope, $scopeRole);
-        $this->granter->grant($root, $rootRole);
+        $this->seed($subjectRole, $permission);
+        $this->seed($scopeRole, $permission);
+        $this->seed($rootRole, $permission);
+        $this->seed($subject, $subjectRole);
+        $this->seed($scope, $scopeRole);
+        $this->seed($root, $rootRole);
 
         self::assertTrue($authorizer->can($subject, ['posts.edit']));
     }
@@ -467,12 +468,12 @@ final class AuthorizerPermissionTest extends TestCase
         $rootRole    = $this->role('root-role');
         $authorizer  = $this->scopedAuthorizer(new TransitiveScopePropagationPolicy());
 
-        $this->granter->grant($subjectRole, $permission);
-        $this->granter->grant($scopeRole, $permission);
-        $this->granter->grant($rootRole, $permission);
-        $this->granter->grant($subject, $subjectRole);
-        $this->granter->grant($scope, $scopeRole);
-        $this->granter->grant($root, $rootRole);
+        $this->seed($subjectRole, $permission);
+        $this->seed($scopeRole, $permission);
+        $this->seed($rootRole, $permission);
+        $this->seed($subject, $subjectRole);
+        $this->seed($scope, $scopeRole);
+        $this->seed($root, $rootRole);
         $this->denier->deny($root, $permission);
 
         self::assertFalse($authorizer->can($subject, ['posts.edit']));
@@ -628,5 +629,39 @@ final class AuthorizerPermissionTest extends TestCase
         }
 
         return $this->roles->create($code, ucfirst($code));
+    }
+
+    private function seed(Subject|Role $owner, Authorization ...$authorizations): void
+    {
+        $permissions = [];
+        $roles       = [];
+
+        foreach ($authorizations as $authorization) {
+            if ($authorization instanceof Permission) {
+                $permissions[] = $authorization;
+                continue;
+            }
+
+            if ($authorization instanceof Role) {
+                $roles[] = $authorization;
+            }
+        }
+
+        if ($owner instanceof Role) {
+            $this->rolePermissions->create($owner, ...$permissions);
+
+            return;
+        }
+
+        if (!empty($permissions)) {
+            $this->subjectPermissions->create(
+                $owner,
+                ...array_map(SubjectPermissionSnapshot::from(...), $permissions),
+            );
+        }
+
+        if (!empty($roles)) {
+            $this->subjectRoles->create($owner, ...$roles);
+        }
     }
 }

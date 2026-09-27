@@ -13,6 +13,8 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Operators;
 
 use Vaened\Sentinel\Authorization;
+use Vaened\Sentinel\Authorization\Authorizer;
+use Vaened\Sentinel\Authorization\Junction;
 use Vaened\Sentinel\Errors\InvalidAuthorization;
 use Vaened\Sentinel\Permission;
 use Vaened\Sentinel\Permissions;
@@ -36,6 +38,7 @@ final readonly class Granter extends Operator
         protected SubjectRoleRepository       $subjectRoles,
         protected SubjectPermissionRepository $subjectPermissions,
         protected RolePermissionRepository    $rolePermissions,
+        protected Authorizer                  $authorizer,
     )
     {
         parent::__construct($roles, $permissions);
@@ -43,17 +46,20 @@ final readonly class Granter extends Operator
 
     public function grant(Subject|Role $owner, Authorization ...$authorizations): void
     {
-        $this->bind($owner, ...$authorizations);
+        [$roles, $permissions] = $this->split(...$authorizations);
+
+        $roles       = $roles->isEmpty() ? $roles : $this->takeRolesOrFail($roles);
+        $permissions = $permissions->isEmpty() ? $permissions : $this->takePermissionsOrFail($permissions);
+
+        $this->validateGrant($owner, $roles, $permissions);
+
+        $this->bind($owner, $roles, $permissions);
     }
 
     protected function forRoles(Subject $owner, Roles $roles): void
     {
-        $available = $this->takeRolesOrFail($roles);
-
-        $this->ensureScopesMatch($owner, $available);
-
         $assigned = $this->subjectRoles->lookup($owner, ...$roles->codes());
-        $toCreate = $available->filter(static fn(Role $role): bool => !$assigned->hasCode($role->code()));
+        $toCreate = $roles->filter(static fn(Role $role): bool => !$assigned->hasCode($role->code()));
 
         if ($toCreate->isEmpty()) {
             return;
@@ -64,14 +70,13 @@ final readonly class Granter extends Operator
 
     protected function forSubjectPermissions(Subject $owner, Permissions $permissions): void
     {
-        $available = $this->takePermissionsOrFail($permissions);
         $assigned  = $this->subjectPermissions->lookup($owner, ...$permissions->codes());
         $inherited = null;
 
         $toCreate = [];
         $toUpdate = [];
 
-        foreach ($available as $permission) {
+        foreach ($permissions as $permission) {
             $assignment = $assigned->find($permission->code());
 
             if (null === $assignment) {
@@ -101,15 +106,27 @@ final readonly class Granter extends Operator
 
     protected function forRolePermissions(Role $owner, Permissions $permissions): void
     {
-        $available = $this->takePermissionsOrFail($permissions);
-        $assigned  = $this->rolePermissions->lookup($owner, ...$permissions->codes());
-        $toCreate  = $available->filter(static fn(Permission $permission): bool => !$assigned->hasCode($permission->code()));
+        $assigned = $this->rolePermissions->lookup($owner, ...$permissions->codes());
+        $toCreate = $permissions->filter(static fn(Permission $permission): bool => !$assigned->hasCode($permission->code()));
 
         if ($toCreate->isEmpty()) {
             return;
         }
 
         $this->rolePermissions->create($owner, ...$toCreate->values());
+    }
+
+    private function validateGrant(Subject|Role $owner, Roles $roles, Permissions $permissions): void
+    {
+        if ($owner instanceof Role) {
+            $this->ensureScopeAllows($owner, $permissions->codes());
+
+            return;
+        }
+
+        $this->ensureScopesMatch($owner, $roles);
+        $this->ensureRolesFitScope($owner, $roles);
+        $this->ensureScopeAllows($owner, $permissions->codes());
     }
 
     private function ensureScopesMatch(Subject $subject, Roles $roles): void
@@ -132,5 +149,27 @@ final readonly class Granter extends Operator
         }
 
         return Scopes::same($subject->scope(), $roleScope);
+    }
+
+    private function ensureRolesFitScope(Subject $subject, Roles $roles): void
+    {
+        foreach ($roles as $role) {
+            $this->ensureScopeAllows($subject, $this->rolePermissions->allOf($role)->codes());
+        }
+    }
+
+    private function ensureScopeAllows(Subject|Role $owner, array $permissions): void
+    {
+        $scope = $owner->scope();
+
+        if ($scope === null || empty($permissions)) {
+            return;
+        }
+
+        if ($this->authorizer->can($scope, $permissions, Junction::And)) {
+            return;
+        }
+
+        throw InvalidAuthorization::forScopePermissions($owner, $scope, $permissions);
     }
 }

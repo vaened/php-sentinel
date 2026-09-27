@@ -28,23 +28,19 @@ trait BindingOperator
 
     abstract protected function forRolePermissions(Role $owner, Permissions $permissions): void;
 
-    protected function bind(Subject|Role $owner, Authorization ...$authorizations): void
+    protected function bind(Subject|Role $owner, Roles $roles, Permissions $permissions): void
     {
-        [$roles, $permissions] = $this->split(...$authorizations);
-
-        if ($owner instanceof Role && !empty($roles)) {
+        if ($owner instanceof Role && !$roles->isEmpty()) {
             throw InvalidAuthorization::forRoleOwner();
         }
 
-        if ($owner instanceof Subject && !empty($roles)) {
-            $this->forRoles($owner, new Roles($roles));
+        if ($owner instanceof Subject && !$roles->isEmpty()) {
+            $this->forRoles($owner, $roles);
         }
 
-        if (empty($permissions)) {
+        if ($permissions->isEmpty()) {
             return;
         }
-
-        $permissions = new Permissions($permissions);
 
         if ($owner instanceof Subject) {
             $this->forSubjectPermissions($owner, $permissions);
@@ -70,6 +66,6 @@ trait BindingOperator
             }
         }
 
-        return [$roles, $permissions];
+        return [new Roles($roles), new Permissions($permissions)];
     }
 }

@@ -13,8 +13,6 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Tests\Integration;
 
 use Vaened\Sentinel\Authorization\Authorizer;
-use Vaened\Sentinel\Authorization\PermissionEntryProvider;
-use Vaened\Sentinel\Authorization\RoleEntryProvider;
 use Vaened\Sentinel\Cache\CachedRepositories;
 use Vaened\Sentinel\Cache\CacheSettings;
 use Vaened\Sentinel\Cache\SentinelCacheFactory;
@@ -72,32 +70,30 @@ final class CachedAuthorizerFlowTest extends TestCase
             subjectRoles      : $subjectRoles,
             subjectPermissions: $this->subjectPermissions,
         );
+        $this->authorizer         = $this->createAuthorizer(
+            $this->repositories->subjectPermissionRepository(),
+            $this->repositories->subjectRoleRepository(),
+        );
 
-        $this->granter    = new Granter(
+        $this->granter = new Granter(
             $this->repositories->roleRepository(),
             $this->repositories->permissionRepository(),
             $this->repositories->subjectRoleRepository(),
             $this->repositories->subjectPermissionRepository(),
             $this->repositories->rolePermissionRepository(),
+            $this->authorizer,
         );
-        $this->denier     = new Denier(
+        $this->denier  = new Denier(
             $this->repositories->roleRepository(),
             $this->repositories->permissionRepository(),
             $this->repositories->subjectPermissionRepository(),
         );
-        $this->revoker    = new Revoker(
+        $this->revoker = new Revoker(
             $this->repositories->roleRepository(),
             $this->repositories->permissionRepository(),
             $this->repositories->subjectRoleRepository(),
             $this->repositories->subjectPermissionRepository(),
             $this->repositories->rolePermissionRepository(),
-        );
-        $this->authorizer = new Authorizer(
-            new PermissionEntryProvider(
-                $this->repositories->subjectPermissionRepository(),
-                $this->repositories->subjectRoleRepository(),
-            ),
-            new RoleEntryProvider($this->repositories->subjectRoleRepository()),
         );
 
         $this->subject = new TestSubject(1);

@@ -34,4 +34,16 @@ class InvalidAuthorization extends AuthorizationError
             Identifiers::value($subject->id()),
         ));
     }
+
+    public static function forScopePermissions(Subject|Role $owner, Subject $scope, array $permissions): static
+    {
+        return new static(sprintf(
+            'Permissions [%s] are not allowed by scope [%s:%s] for [%s:%s].',
+            implode(', ', $permissions),
+            $scope::class,
+            Identifiers::value($scope->id()),
+            $owner::class,
+            Identifiers::value($owner->id()),
+        ));
+    }
 }

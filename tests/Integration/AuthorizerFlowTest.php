@@ -14,11 +14,10 @@ namespace Vaened\Sentinel\Tests\Integration;
 
 use Vaened\Sentinel\Authorization\Authorizer;
 use Vaened\Sentinel\Authorization\Junction;
-use Vaened\Sentinel\Authorization\PermissionEntryProvider;
-use Vaened\Sentinel\Authorization\RoleEntryProvider;
 use Vaened\Sentinel\Operators\Denier;
 use Vaened\Sentinel\Operators\Granter;
 use Vaened\Sentinel\Operators\Revoker;
+use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryPermissionRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRolePermissionRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRoleRepository;
@@ -31,51 +30,51 @@ use Vaened\Sentinel\Tests\TestCase;
 
 final class AuthorizerFlowTest extends TestCase
 {
-    private Authorizer                   $authorizer;
+    private Authorizer                          $authorizer;
 
-    private Granter                      $granter;
+    private Granter                             $granter;
 
-    private Denier                       $denier;
+    private Denier                              $denier;
 
-    private Revoker                      $revoker;
+    private Revoker                             $revoker;
 
-    private InMemoryPermissionRepository $permissions;
+    private InMemoryPermissionRepository        $permissions;
 
-    private InMemoryRoleRepository       $roles;
+    private InMemoryRoleRepository              $roles;
+
+    private InMemorySubjectPermissionRepository $subjectPermissions;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $subjectPermissions = new InMemorySubjectPermissionRepository();
-        $rolePermissions    = new InMemoryRolePermissionRepository();
-        $subjectRoles       = new InMemorySubjectRoleRepository($rolePermissions);
+        $this->subjectPermissions = new InMemorySubjectPermissionRepository();
+        $rolePermissions          = new InMemoryRolePermissionRepository();
+        $subjectRoles             = new InMemorySubjectRoleRepository($rolePermissions);
 
         $this->permissions = new InMemoryPermissionRepository();
         $this->roles       = new InMemoryRoleRepository();
+        $this->authorizer  = $this->createAuthorizer($this->subjectPermissions, $subjectRoles);
 
-        $this->granter    = new Granter(
+        $this->granter = new Granter(
             $this->roles,
             $this->permissions,
             $subjectRoles,
-            $subjectPermissions,
+            $this->subjectPermissions,
             $rolePermissions,
+            $this->authorizer,
         );
-        $this->denier     = new Denier(
+        $this->denier  = new Denier(
             $this->roles,
             $this->permissions,
-            $subjectPermissions,
+            $this->subjectPermissions,
         );
-        $this->revoker    = new Revoker(
+        $this->revoker = new Revoker(
             $this->roles,
             $this->permissions,
             $subjectRoles,
-            $subjectPermissions,
+            $this->subjectPermissions,
             $rolePermissions,
-        );
-        $this->authorizer = new Authorizer(
-            new PermissionEntryProvider($subjectPermissions, $subjectRoles),
-            new RoleEntryProvider($subjectRoles),
         );
     }
 
@@ -192,15 +191,15 @@ final class AuthorizerFlowTest extends TestCase
         $scope      = new TestSubject(2, $root);
         $subject    = new TestSubject(1, $scope);
 
-        $this->granter->grant($subject, $permission);
+        $this->seed($subject, $permission);
 
         self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
 
-        $this->granter->grant($scope, $permission);
+        $this->seed($scope, $permission);
 
         self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
 
-        $this->granter->grant($root, $permission);
+        $this->seed($root, $permission);
 
         self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
 
@@ -217,5 +216,13 @@ final class AuthorizerFlowTest extends TestCase
     private function role(string $code): TestRole
     {
         return $this->roles->create($code, ucfirst($code));
+    }
+
+    private function seed(TestSubject $subject, TestPermission ...$permissions): void
+    {
+        $this->subjectPermissions->create(
+            $subject,
+            ...array_map(SubjectPermissionSnapshot::from(...), $permissions),
+        );
     }
 }
