@@ -15,11 +15,11 @@ namespace Vaened\Sentinel\Registry;
 use Vaened\Sentinel\Errors\RoleAlreadyExists;
 use Vaened\Sentinel\Errors\RoleInUse;
 use Vaened\Sentinel\Errors\RoleNotFound;
-use Vaened\Sentinel\Identifiers;
 use Vaened\Sentinel\Repositories\RoleRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Roles;
+use Vaened\Sentinel\Scopes;
 use Vaened\Sentinel\Subject;
 
 final readonly class RoleRegistry
@@ -94,12 +94,6 @@ final readonly class RoleRegistry
     {
         $roleScope = $role->scope();
 
-        return $scope === null || $roleScope === null || self::hasSameScope($roleScope, $scope);
-    }
-
-    private static function hasSameScope(Subject $left, Subject $right): bool
-    {
-        return $left::class === $right::class
-            && Identifiers::value($left->id()) === Identifiers::value($right->id());
+        return $scope === null || $roleScope === null || Scopes::same($roleScope, $scope);
     }
 }

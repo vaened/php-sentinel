@@ -13,9 +13,9 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Tests\Runtime\Repositories;
 
 use Vaened\Sentinel\Errors\RoleAlreadyExists;
-use Vaened\Sentinel\Identifiers;
 use Vaened\Sentinel\Repositories\RoleRepository;
 use Vaened\Sentinel\Roles;
+use Vaened\Sentinel\Scopes;
 use Vaened\Sentinel\Subject;
 use Vaened\Sentinel\Tests\Runtime\AbstractAuthorization;
 use Vaened\Sentinel\Tests\Runtime\TestRole;
@@ -100,7 +100,6 @@ final class InMemoryRoleRepository implements RoleRepository
             return $roleScope === $scope;
         }
 
-        return $roleScope::class === $scope::class
-            && Identifiers::value($roleScope->id()) === Identifiers::value($scope->id());
+        return Scopes::same($roleScope, $scope);
     }
 }
