@@ -17,6 +17,7 @@ use Vaened\Sentinel\Errors\RoleNotFound;
 use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Repositories\PermissionRepository;
 use Vaened\Sentinel\Repositories\RoleRepository;
+use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Roles;
 
 abstract readonly class Operator
@@ -42,13 +43,39 @@ abstract readonly class Operator
 
     protected function takeRolesOrFail(Roles $roles): Roles
     {
-        $available = $this->roles->lookup(null, ...$roles->codes());
-        $missing   = $available->missing($roles->codes());
+        $available = $this->roles->match(...$roles->codes());
+        $resolved  = [];
+        $missing   = [];
+
+        foreach ($roles as $role) {
+            $resolvedRole = $this->resolve($available, $role);
+
+            if ($resolvedRole === null) {
+                $missing[] = $role->code();
+                continue;
+            }
+
+            $resolved[] = $resolvedRole;
+        }
 
         if (!empty($missing)) {
             throw RoleNotFound::fromCodes($missing);
         }
 
-        return $available;
+        return new Roles($resolved);
+    }
+
+    private function resolve(Roles $roles, Role $expected): Role|null
+    {
+        foreach ($roles as $role) {
+            if (
+                (string)$role->id() === (string)$expected->id()
+                && $role->code() === $expected->code()
+            ) {
+                return $role;
+            }
+        }
+
+        return null;
     }
 }

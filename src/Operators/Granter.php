@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Operators;
 
 use Vaened\Sentinel\Authorization;
+use Vaened\Sentinel\Errors\InvalidAuthorization;
 use Vaened\Sentinel\Permission;
 use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Repositories\PermissionRepository;
@@ -22,6 +23,7 @@ use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
 use Vaened\Sentinel\Roles;
+use Vaened\Sentinel\Scopes;
 use Vaened\Sentinel\Subject;
 
 final readonly class Granter extends Operator
@@ -47,8 +49,11 @@ final readonly class Granter extends Operator
     protected function forRoles(Subject $owner, Roles $roles): void
     {
         $available = $this->takeRolesOrFail($roles);
-        $assigned  = $this->subjectRoles->lookup($owner, ...$roles->codes());
-        $toCreate  = $available->filter(static fn(Role $role): bool => !$assigned->hasCode($role->code()));
+
+        $this->ensureScopesMatch($owner, $available);
+
+        $assigned = $this->subjectRoles->lookup($owner, ...$roles->codes());
+        $toCreate = $available->filter(static fn(Role $role): bool => !$assigned->hasCode($role->code()));
 
         if ($toCreate->isEmpty()) {
             return;
@@ -105,5 +110,27 @@ final readonly class Granter extends Operator
         }
 
         $this->rolePermissions->create($owner, ...$toCreate->values());
+    }
+
+    private function ensureScopesMatch(Subject $subject, Roles $roles): void
+    {
+        foreach ($roles as $role) {
+            if ($this->canAssign($subject, $role)) {
+                continue;
+            }
+
+            throw InvalidAuthorization::forRoleScope($subject, $role, $role->scope());
+        }
+    }
+
+    private function canAssign(Subject $subject, Role $role): bool
+    {
+        $roleScope = $role->scope();
+
+        if ($roleScope === null) {
+            return true;
+        }
+
+        return Scopes::same($subject->scope(), $roleScope);
     }
 }
