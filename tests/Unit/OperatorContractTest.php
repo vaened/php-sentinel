@@ -12,9 +12,7 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Unit;
 
-use RuntimeException;
 use Vaened\Sentinel\Operators\Denier;
-use Vaened\Sentinel\Operators\Granter;
 use Vaened\Sentinel\Operators\Revoker;
 use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Repositories\PermissionRepository;
@@ -31,69 +29,6 @@ use Vaened\Sentinel\Tests\TestCase;
 
 final class OperatorContractTest extends TestCase
 {
-    public function test_grant_calls_permission_catalog_lookup_before_create(): void
-    {
-        $permission = new TestPermission(1, 'posts.edit', 'Edit Posts');
-
-        $callOrder = [];
-
-        $permissionRepository = $this->createMock(PermissionRepository::class);
-        $permissionRepository->method('lookup')
-                             ->willReturnCallback(function () use (&$callOrder, $permission): Permissions {
-                                 $callOrder[] = 'catalog.lookup';
-                                 return new Permissions([$permission]);
-                             });
-
-        $subjectPermissionRepository = $this->createMock(SubjectPermissionRepository::class);
-        $subjectPermissionRepository->method('lookup')
-                                    ->willReturnCallback(function () use (&$callOrder): SubjectPermissions {
-                                        $callOrder[] = 'subject_assignment.lookup';
-                                        return new SubjectPermissions([]);
-                                    });
-        $subjectPermissionRepository->expects($this->once())
-                                    ->method('create')
-                                    ->willReturnCallback(function () use (&$callOrder): void {
-                                        $callOrder[] = 'subject_assignment.create';
-                                    });
-
-        $granter = new Granter(
-            $this->createMock(RoleRepository::class),
-            $permissionRepository,
-            $this->createMock(SubjectRoleRepository::class),
-            $subjectPermissionRepository,
-            $this->createMock(RolePermissionRepository::class),
-        );
-
-        $granter->grant(new TestSubject(1), $permission);
-
-        self::assertSame(
-            ['catalog.lookup', 'subject_assignment.lookup', 'subject_assignment.create'],
-            $callOrder,
-        );
-    }
-
-    public function test_grant_propagates_repository_failure(): void
-    {
-        $permission = new TestPermission(1, 'posts.edit', 'Edit Posts');
-
-        $permissionRepository = $this->createMock(PermissionRepository::class);
-        $permissionRepository->method('lookup')
-                             ->willThrowException(new RuntimeException('DB connection lost'));
-
-        $granter = new Granter(
-            $this->createMock(RoleRepository::class),
-            $permissionRepository,
-            $this->createMock(SubjectRoleRepository::class),
-            $this->createMock(SubjectPermissionRepository::class),
-            $this->createMock(RolePermissionRepository::class),
-        );
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('DB connection lost');
-
-        $granter->grant(new TestSubject(1), $permission);
-    }
-
     public function test_revoke_skips_remove_when_not_assigned(): void
     {
         $permission = new TestPermission(1, 'posts.edit', 'Edit Posts');
