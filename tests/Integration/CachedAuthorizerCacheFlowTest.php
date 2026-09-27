@@ -20,6 +20,9 @@ use Vaened\Sentinel\Cache\CachedRepositories;
 use Vaened\Sentinel\Cache\CacheSettings;
 use Vaened\Sentinel\Cache\SentinelCacheFactory;
 use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
+use Vaened\Sentinel\Propagation\DirectScopePropagationPolicy;
+use Vaened\Sentinel\Propagation\ScopePropagationPolicy;
+use Vaened\Sentinel\Propagation\TransitiveScopePropagationPolicy;
 use Vaened\Sentinel\Repositories\PermissionRepository;
 use Vaened\Sentinel\Repositories\RolePermissionRepository;
 use Vaened\Sentinel\Repositories\RoleRepository;
@@ -114,6 +117,248 @@ final class CachedAuthorizerCacheFlowTest extends TestCase
 
         self::assertFalse($authorizer->can($subject, ['posts.edit']));
         self::assertSame(['roles' => 1, 'grants' => 1, 'permissions' => 1], $calls);
+    }
+
+    public function test_transitive_scope_permissions_warm_each_selected_subject_projection(): void
+    {
+        $permission = new TestPermission(10, 'posts.edit', 'Edit Posts');
+        $root       = new TestSubject(3);
+        $scope      = new TestSubject(2, $root);
+        $subject    = new TestSubject(1, $scope);
+        $calls      = [
+            1 => $this->persistenceCalls(),
+            2 => $this->persistenceCalls(),
+            3 => $this->persistenceCalls(),
+        ];
+
+        $subjectRoles = $this->createMock(SubjectRoleRepository::class);
+        $subjectRoles->method('allOf')
+                     ->willReturnCallback(function (TestSubject $current) use (&$calls): Authorizations {
+                         $calls[$current->id()]['roles']++;
+
+                         return new Authorizations([]);
+                     });
+        $subjectRoles->method('grants')
+                     ->willReturnCallback(function (TestSubject $current) use (&$calls): Authorizations {
+                         $calls[$current->id()]['grants']++;
+
+                         return new Authorizations([]);
+                     });
+
+        $subjectPermissions = $this->createMock(SubjectPermissionRepository::class);
+        $subjectPermissions->method('allOf')
+                           ->willReturnCallback(function (TestSubject $current) use (&$calls, $permission): SubjectPermissions {
+                               $calls[$current->id()]['permissions']++;
+
+                               return new SubjectPermissions([TestSubjectPermission::from($permission)]);
+                           });
+
+        [$authorizer] = $this->cachedContext(
+            $subjectRoles,
+            $subjectPermissions,
+            $this->createStub(RolePermissionRepository::class),
+            new TransitiveScopePropagationPolicy(),
+        );
+
+        self::assertTrue($authorizer->can($subject, ['posts.edit']));
+        self::assertSame([
+            1 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            2 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            3 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+        ], $calls);
+
+        self::assertTrue($authorizer->can($subject, ['posts.edit']));
+        self::assertSame([
+            1 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            2 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            3 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+        ], $calls);
+    }
+
+    public function test_direct_scope_permissions_do_not_load_an_ancestors_projection(): void
+    {
+        $permission = new TestPermission(10, 'posts.edit', 'Edit Posts');
+        $root       = new TestSubject(3);
+        $scope      = new TestSubject(2, $root);
+        $subject    = new TestSubject(1, $scope);
+        $calls      = [
+            1 => $this->persistenceCalls(),
+            2 => $this->persistenceCalls(),
+            3 => $this->persistenceCalls(),
+        ];
+
+        $subjectRoles = $this->createMock(SubjectRoleRepository::class);
+        $subjectRoles->method('allOf')
+                     ->willReturnCallback(function (TestSubject $current) use (&$calls): Authorizations {
+                         $calls[$current->id()]['roles']++;
+
+                         return new Authorizations([]);
+                     });
+        $subjectRoles->method('grants')
+                     ->willReturnCallback(function (TestSubject $current) use (&$calls): Authorizations {
+                         $calls[$current->id()]['grants']++;
+
+                         return new Authorizations([]);
+                     });
+
+        $subjectPermissions = $this->createMock(SubjectPermissionRepository::class);
+        $subjectPermissions->method('allOf')
+                           ->willReturnCallback(function (TestSubject $current) use (&$calls, $permission): SubjectPermissions {
+                               $calls[$current->id()]['permissions']++;
+
+                               return new SubjectPermissions([TestSubjectPermission::from($permission)]);
+                           });
+
+        [$authorizer] = $this->cachedContext(
+            $subjectRoles,
+            $subjectPermissions,
+            $this->createStub(RolePermissionRepository::class),
+            new DirectScopePropagationPolicy(),
+        );
+
+        self::assertTrue($authorizer->can($subject, ['posts.edit']));
+        self::assertSame([
+            1 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            2 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            3 => ['roles' => 0, 'grants' => 0, 'permissions' => 0],
+        ], $calls);
+
+        self::assertTrue($authorizer->can($subject, ['posts.edit']));
+        self::assertSame([
+            1 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            2 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            3 => ['roles' => 0, 'grants' => 0, 'permissions' => 0],
+        ], $calls);
+    }
+
+    public function test_transitive_scope_role_permissions_warm_each_selected_subject_projection(): void
+    {
+        $role       = new TestRole(20, 'editor', 'Editor');
+        $permission = new TestPermission(10, 'posts.edit', 'Edit Posts');
+        $root       = new TestSubject(3);
+        $scope      = new TestSubject(2, $root);
+        $subject    = new TestSubject(1, $scope);
+        $calls      = [
+            1 => $this->persistenceCalls(),
+            2 => $this->persistenceCalls(),
+            3 => $this->persistenceCalls(),
+        ];
+
+        $subjectRoles = $this->createMock(SubjectRoleRepository::class);
+        $subjectRoles->method('allOf')
+                     ->willReturnCallback(function (TestSubject $current) use (&$calls, $role): Authorizations {
+                         $calls[$current->id()]['roles']++;
+
+                         return new Authorizations([$role]);
+                     });
+        $subjectRoles->method('grants')
+                     ->willReturnCallback(function (TestSubject $current) use (&$calls, $permission): Authorizations {
+                         $calls[$current->id()]['grants']++;
+
+                         return new Authorizations([$permission]);
+                     });
+
+        $subjectPermissions = $this->createMock(SubjectPermissionRepository::class);
+        $subjectPermissions->method('allOf')
+                           ->willReturnCallback(function (TestSubject $current) use (&$calls): SubjectPermissions {
+                               $calls[$current->id()]['permissions']++;
+
+                               return new SubjectPermissions([]);
+                           });
+
+        [$authorizer] = $this->cachedContext(
+            $subjectRoles,
+            $subjectPermissions,
+            $this->createStub(RolePermissionRepository::class),
+            new TransitiveScopePropagationPolicy(),
+        );
+
+        self::assertTrue($authorizer->can($subject, ['posts.edit']));
+        self::assertSame([
+            1 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            2 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            3 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+        ], $calls);
+
+        self::assertTrue($authorizer->can($subject, ['posts.edit']));
+        self::assertSame([
+            1 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            2 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            3 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+        ], $calls);
+    }
+
+    public function test_mutating_an_ancestor_rebuilds_only_its_projection_for_a_descendant(): void
+    {
+        $permission     = new TestPermission(10, 'posts.edit', 'Edit Posts');
+        $root           = new TestSubject(3);
+        $scope          = new TestSubject(2, $root);
+        $subject        = new TestSubject(1, $scope);
+        $calls          = [
+            1 => $this->persistenceCalls(),
+            2 => $this->persistenceCalls(),
+            3 => $this->persistenceCalls(),
+        ];
+        $ancestorDenied = false;
+
+        $subjectRoles = $this->createMock(SubjectRoleRepository::class);
+        $subjectRoles->method('allOf')
+                     ->willReturnCallback(function (TestSubject $current) use (&$calls): Authorizations {
+                         $calls[$current->id()]['roles']++;
+
+                         return new Authorizations([]);
+                     });
+        $subjectRoles->method('grants')
+                     ->willReturnCallback(function (TestSubject $current) use (&$calls): Authorizations {
+                         $calls[$current->id()]['grants']++;
+
+                         return new Authorizations([]);
+                     });
+
+        $subjectPermissions = $this->createMock(SubjectPermissionRepository::class);
+        $subjectPermissions->method('allOf')
+                           ->willReturnCallback(function (TestSubject $current) use (
+                               &$calls,
+                               $permission,
+                               $root,
+                               &$ancestorDenied,
+                           ): SubjectPermissions {
+                               $calls[$current->id()]['permissions']++;
+
+                               return new SubjectPermissions([
+                                   TestSubjectPermission::from(
+                                       $permission,
+                                       $current === $root && $ancestorDenied,
+                                   ),
+                               ]);
+                           });
+        $subjectPermissions->expects(self::once())
+                           ->method('update')
+                           ->with($root, new SubjectPermissionSnapshot(10, 'posts.edit', true))
+                           ->willReturnCallback(function () use (&$ancestorDenied): void {
+                               $ancestorDenied = true;
+                           });
+
+        [$authorizer, $cached] = $this->cachedContext(
+            $subjectRoles,
+            $subjectPermissions,
+            $this->createStub(RolePermissionRepository::class),
+            new TransitiveScopePropagationPolicy(),
+        );
+
+        self::assertTrue($authorizer->can($subject, ['posts.edit']));
+
+        $cached->subjectPermissionRepository()->update(
+            $root,
+            new SubjectPermissionSnapshot(10, 'posts.edit', true),
+        );
+
+        self::assertFalse($authorizer->can($subject, ['posts.edit']));
+        self::assertSame([
+            1 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            2 => ['roles' => 1, 'grants' => 1, 'permissions' => 1],
+            3 => ['roles' => 2, 'grants' => 2, 'permissions' => 2],
+        ], $calls);
     }
 
     public function test_assigning_a_role_forgets_only_that_subjects_projection(): void
@@ -637,6 +882,7 @@ final class CachedAuthorizerCacheFlowTest extends TestCase
         SubjectRoleRepository       $subjectRoles,
         SubjectPermissionRepository $subjectPermissions,
         RolePermissionRepository    $rolePermissions,
+        ScopePropagationPolicy      $propagation = new TransitiveScopePropagationPolicy(),
     ): array
     {
         $cached = SentinelCacheFactory::from(
@@ -656,6 +902,7 @@ final class CachedAuthorizerCacheFlowTest extends TestCase
                 $cached->subjectRoleRepository(),
             ),
             new RoleEntryProvider($cached->subjectRoleRepository()),
+            $propagation,
         ),
             $cached];
     }

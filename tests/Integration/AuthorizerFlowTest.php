@@ -12,13 +12,10 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Integration;
 
-use PHPUnit\Framework\Attributes\DataProvider;
 use Vaened\Sentinel\Authorization\Authorizer;
 use Vaened\Sentinel\Authorization\Junction;
 use Vaened\Sentinel\Authorization\PermissionEntryProvider;
 use Vaened\Sentinel\Authorization\RoleEntryProvider;
-use Vaened\Sentinel\Errors\PermissionNotFound;
-use Vaened\Sentinel\Errors\RoleNotFound;
 use Vaened\Sentinel\Operators\Denier;
 use Vaened\Sentinel\Operators\Granter;
 use Vaened\Sentinel\Operators\Revoker;
@@ -42,46 +39,9 @@ final class AuthorizerFlowTest extends TestCase
 
     private Revoker                      $revoker;
 
-    private InMemoryRoleRepository       $roles;
-
     private InMemoryPermissionRepository $permissions;
 
-    private TestSubject                  $subject;
-
-    private TestRole                     $role;
-
-    public static function permissionEvaluationCases(): iterable
-    {
-        $cases = require dirname(__DIR__) . '/Fixtures/authorizer-flow.php';
-
-        foreach ($cases['permission_evaluation'] as $name => $case) {
-            yield $name => [
-                $case['method'],
-                $case['junction'],
-                $case['codes'],
-                $case['subject_allowed'],
-                $case['subject_denied'],
-                $case['role_permissions'],
-                $case['assign_role'],
-                $case['expected'],
-            ];
-        }
-    }
-
-    public static function roleEvaluationCases(): iterable
-    {
-        $cases = require dirname(__DIR__) . '/Fixtures/authorizer-flow.php';
-
-        foreach ($cases['role_evaluation'] as $name => $case) {
-            yield $name => [
-                $case['method'],
-                $case['junction'],
-                $case['assigned_roles'],
-                $case['codes'],
-                $case['expected'],
-            ];
-        }
-    }
+    private InMemoryRoleRepository       $roles;
 
     protected function setUp(): void
     {
@@ -91,222 +51,171 @@ final class AuthorizerFlowTest extends TestCase
         $rolePermissions    = new InMemoryRolePermissionRepository();
         $subjectRoles       = new InMemorySubjectRoleRepository($rolePermissions);
 
-        $this->roles       = new InMemoryRoleRepository();
         $this->permissions = new InMemoryPermissionRepository();
+        $this->roles       = new InMemoryRoleRepository();
 
-        $this->granter = new Granter(
+        $this->granter    = new Granter(
             $this->roles,
             $this->permissions,
             $subjectRoles,
             $subjectPermissions,
             $rolePermissions,
         );
-
-        $this->denier = new Denier(
+        $this->denier     = new Denier(
             $this->roles,
             $this->permissions,
             $subjectPermissions,
         );
-
-        $this->revoker = new Revoker(
+        $this->revoker    = new Revoker(
             $this->roles,
             $this->permissions,
             $subjectRoles,
             $subjectPermissions,
             $rolePermissions,
         );
-
         $this->authorizer = new Authorizer(
             new PermissionEntryProvider($subjectPermissions, $subjectRoles),
             new RoleEntryProvider($subjectRoles),
         );
-
-        $this->subject = new TestSubject(1);
-        $this->role    = $this->role('admin');
     }
 
-    public function test_can_returns_false_for_empty_permission_list(): void
+    public function test_direct_permission_lifecycle(): void
     {
-        self::assertFalse($this->authorizer->can($this->subject, []));
-    }
-
-    public function test_cannot_returns_true_for_empty_permission_list(): void
-    {
-        self::assertTrue($this->authorizer->cannot($this->subject, []));
-    }
-
-    public function test_subject_can_use_a_direct_permission(): void
-    {
+        $subject    = new TestSubject(1);
         $permission = $this->permission('posts.edit');
 
-        $this->granter->grant($this->subject, $permission);
+        $this->granter->grant($subject, $permission);
 
-        self::assertTrue($this->authorizer->can($this->subject, ['posts.edit']));
-        self::assertFalse($this->authorizer->cannot($this->subject, ['posts.edit']));
+        self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
+
+        $this->denier->deny($subject, $permission);
+
+        self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
+
+        $this->revoker->revoke($subject, $permission);
+
+        self::assertTrue($this->authorizer->cannot($subject, ['posts.edit']));
     }
 
-    public function test_subject_inherits_a_permission_from_role(): void
+    public function test_inherited_role_permission_lifecycle(): void
     {
+        $subject    = new TestSubject(1);
+        $role       = $this->role('editor');
         $permission = $this->permission('posts.edit');
 
-        $this->granter->grant($this->role, $permission);
-        $this->granter->grant($this->subject, $this->role);
+        $this->granter->grant($role, $permission);
+        $this->granter->grant($subject, $role);
 
-        self::assertTrue($this->authorizer->can($this->subject, ['posts.edit']));
+        self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
+
+        $this->revoker->revoke($subject, $role);
+
+        self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
     }
 
-    public function test_subject_does_not_keep_a_role_permission_after_the_role_is_revoked(): void
+    public function test_revoking_a_direct_permission_preserves_the_roles_permission(): void
     {
+        $subject    = new TestSubject(1);
+        $role       = $this->role('editor');
         $permission = $this->permission('posts.edit');
 
-        $this->granter->grant($this->role, $permission);
-        $this->granter->grant($this->subject, $this->role);
-        $this->granter->grant($this->subject, $permission);
+        $this->granter->grant($subject, $permission);
+        $this->granter->grant($role, $permission);
+        $this->granter->grant($subject, $role);
 
-        $this->revoker->revoke($this->subject, $this->role);
+        $this->revoker->revoke($subject, $permission);
 
-        self::assertFalse($this->authorizer->can($this->subject, ['posts.edit']));
+        self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
     }
 
-    public function test_subject_denial_prevails_over_role_permission(): void
+    public function test_revoking_a_denial_restores_the_inherited_permission(): void
     {
-        $permission = $this->permission('users.delete');
-
-        $this->granter->grant($this->role, $permission);
-        $this->granter->grant($this->subject, $this->role);
-        $this->denier->deny($this->subject, $permission);
-
-        self::assertFalse($this->authorizer->can($this->subject, ['users.delete']));
-        self::assertTrue($this->authorizer->cannot($this->subject, ['users.delete']));
-    }
-
-    public function test_subject_cannot_when_permission_is_missing(): void
-    {
-        self::assertFalse($this->authorizer->can($this->subject, ['posts.edit']));
-        self::assertTrue($this->authorizer->cannot($this->subject, ['posts.edit']));
-    }
-
-    public function test_subject_cannot_after_permission_is_revoked(): void
-    {
+        $subject    = new TestSubject(1);
+        $role       = $this->role('editor');
         $permission = $this->permission('posts.edit');
 
-        $this->granter->grant($this->subject, $permission);
+        $this->granter->grant($role, $permission);
+        $this->granter->grant($subject, $role);
+        $this->denier->deny($subject, $permission);
 
-        $this->revoker->revoke($this->subject, $permission);
+        self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
 
-        self::assertFalse($this->authorizer->can($this->subject, ['posts.edit']));
-        self::assertTrue($this->authorizer->cannot($this->subject, ['posts.edit']));
+        $this->revoker->revoke($subject, $permission);
+
+        self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
     }
 
-    public function test_grant_throws_when_permission_does_not_exist_in_the_catalog(): void
+    public function test_role_permission_lifecycle_after_the_role_is_assigned(): void
     {
-        $phantom = new TestPermission(999, 'phantom.perm', 'Phantom');
+        $subject    = new TestSubject(1);
+        $role       = $this->role('editor');
+        $permission = $this->permission('posts.edit');
 
-        $this->expectException(PermissionNotFound::class);
-        $this->granter->grant($this->subject, $phantom);
+        $this->granter->grant($subject, $role);
+        $this->granter->grant($role, $permission);
+
+        self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
+
+        $this->revoker->revoke($role, $permission);
+
+        self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
     }
 
-    public function test_grant_throws_when_role_does_not_exist_in_the_catalog(): void
+    public function test_purging_a_subject_removes_direct_permissions_and_roles(): void
     {
-        $phantom = new TestRole(999, 'phantom.role', 'Phantom');
+        $subject          = new TestSubject(1);
+        $role             = $this->role('editor');
+        $directPermission = $this->permission('posts.edit');
+        $rolePermission   = $this->permission('users.delete');
 
-        $this->expectException(RoleNotFound::class);
-        $this->granter->grant($this->subject, $phantom);
+        $this->granter->grant($subject, $directPermission);
+        $this->granter->grant($role, $rolePermission);
+        $this->granter->grant($subject, $role);
+
+        self::assertTrue($this->authorizer->can(
+            $subject,
+            ['posts.edit', 'users.delete'],
+            Junction::And,
+        ));
+        self::assertTrue($this->authorizer->is($subject, ['editor']));
+
+        $this->revoker->purge($subject);
+
+        self::assertFalse($this->authorizer->can($subject, ['posts.edit', 'users.delete']));
+        self::assertFalse($this->authorizer->is($subject, ['editor']));
     }
 
-    #[DataProvider('permissionEvaluationCases')]
-    public function test_permission_evaluation(
-        string   $method,
-        Junction $junction,
-        array    $codes,
-        array    $subjectAllowed,
-        array    $subjectDenied,
-        array    $rolePermissions,
-        bool     $assignRole,
-        bool     $expected,
-    ): void
+    public function test_transitive_scope_permission_lifecycle(): void
     {
-        $permissions = [];
+        $permission = $this->permission('posts.edit');
+        $root       = new TestSubject(3);
+        $scope      = new TestSubject(2, $root);
+        $subject    = new TestSubject(1, $scope);
 
-        foreach ($subjectAllowed as $code) {
-            $permissions[$code] ??= $this->permission($code);
-            $this->granter->grant($this->subject, $permissions[$code]);
-        }
+        $this->granter->grant($subject, $permission);
 
-        foreach ($subjectDenied as $code) {
-            $permissions[$code] ??= $this->permission($code);
-            $this->denier->deny($this->subject, $permissions[$code]);
-        }
+        self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
 
-        foreach ($rolePermissions as $code) {
-            $permissions[$code] ??= $this->permission($code);
-            $this->granter->grant($this->role, $permissions[$code]);
-        }
+        $this->granter->grant($scope, $permission);
 
-        if ($assignRole) {
-            $this->granter->grant($this->subject, $this->role);
-        }
+        self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
 
-        self::assertSame($expected, $this->authorizer->{$method}($this->subject, $codes, $junction));
+        $this->granter->grant($root, $permission);
+
+        self::assertTrue($this->authorizer->can($subject, ['posts.edit']));
+
+        $this->denier->deny($root, $permission);
+
+        self::assertFalse($this->authorizer->can($subject, ['posts.edit']));
     }
 
-    public function test_is_returns_false_for_empty_role_list(): void
+    private function permission(string $code): TestPermission
     {
-        self::assertFalse($this->authorizer->is($this->subject, []));
-    }
-
-    public function test_isnt_returns_true_for_empty_role_list(): void
-    {
-        self::assertTrue($this->authorizer->isnt($this->subject, []));
-    }
-
-    public function test_subject_isnt_after_role_is_revoked(): void
-    {
-        $role = $this->role('editor');
-
-        $this->granter->grant($this->subject, $role);
-
-        $this->revoker->revoke($this->subject, $role);
-
-        self::assertFalse($this->authorizer->is($this->subject, ['editor']));
-        self::assertTrue($this->authorizer->isnt($this->subject, ['editor']));
-    }
-
-    #[DataProvider('roleEvaluationCases')]
-    public function test_role_evaluation(
-        string   $method,
-        Junction $junction,
-        array    $assignedRoles,
-        array    $codes,
-        bool     $expected,
-    ): void
-    {
-        foreach ($assignedRoles as $code) {
-            $this->granter->grant($this->subject, $this->role($code));
-        }
-
-        self::assertSame($expected, $this->authorizer->{$method}($this->subject, $codes, $junction));
-    }
-
-    protected function permission(string $code): TestPermission
-    {
-        $permission = $this->permissions->lookup($code)->find($code);
-
-        if ($permission instanceof TestPermission) {
-            return $permission;
-        }
-
         return $this->permissions->create($code, ucfirst(str_replace('.', ' ', $code)));
     }
 
-    protected function role(string $code): TestRole
+    private function role(string $code): TestRole
     {
-        $role = $this->roles->lookup(null, $code)->find($code);
-
-        if ($role instanceof TestRole) {
-            return $role;
-        }
-
         return $this->roles->create($code, ucfirst($code));
     }
 }

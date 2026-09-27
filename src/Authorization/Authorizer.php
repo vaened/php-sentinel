@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Authorization;
 
+use Vaened\Sentinel\Propagation\ScopePropagationPolicy;
+use Vaened\Sentinel\Propagation\TransitiveScopePropagationPolicy;
 use Vaened\Sentinel\Subject;
 
 final readonly class Authorizer
@@ -19,18 +21,32 @@ final readonly class Authorizer
     public function __construct(
         protected PermissionEntryProvider $permissions,
         protected RoleEntryProvider       $roles,
+        protected ScopePropagationPolicy  $propagation = new TransitiveScopePropagationPolicy(),
     )
     {
     }
 
     public function can(Subject $subject, array $permissions, Junction $junction = Junction::Or): bool
     {
-        $facts = $this->permissions->for($subject, ...$permissions);
+        if (empty($permissions)) {
+            return false;
+        }
+
+        $facts = [
+            $this->permissions->for($subject, ...$permissions),
+        ];
+
+        foreach ($this->propagation->scopes($subject) as $scope) {
+            $facts[] = $this->permissions->for($scope, ...$permissions);
+        }
 
         return $this->evaluate(
             $permissions,
             $junction,
-            static fn(string $permission): bool => $facts->allows($permission)
+            static fn(string $permission): bool => array_all(
+                $facts,
+                static fn(PermissionEntries $entries): bool => $entries->allows($permission),
+            ),
         );
     }
 

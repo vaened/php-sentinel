@@ -33,4 +33,9 @@ final class TestSubject implements Subject
     {
         return $this->scope;
     }
+
+    public function setScope(Subject|null $scope): void
+    {
+        $this->scope = $scope;
+    }
 }
