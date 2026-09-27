@@ -53,7 +53,8 @@ These contracts define the minimum model Sentinel needs to evaluate authorizatio
     - Represents the subject requesting permissions.
     - Sentinel only requires:
         - `id(): int|string|Identifier`
-        - `Identifier`: [`Identifier`](src/Identifier.php)
+        - `scope(): Subject|null`
+            - `Identifier`: [`Identifier`](src/Identifier.php)
 
 - **Authorization**
     - Contract: [`Authorization`](src/Authorization.php)
@@ -64,7 +65,7 @@ These contracts define the minimum model Sentinel needs to evaluate authorizatio
         - **Role**
             - Contract: [`Role`](src/Role.php)
             - Represents a composite authorization. A role groups permissions.
-            - Provides `id()`, `name()`, `description()` for catalog use.
+            - Provides `id()`, `name()`, `description()`, and `scope()` for catalog use.
         - **Permission**
             - Contract: [`Permission`](src/Permission.php)
             - Represents an atomic authorization.
@@ -79,14 +80,115 @@ These contracts define the minimum model Sentinel needs to evaluate authorizatio
                 - `Direct` — direct grant on the subject
                 - `Inherited` — grant inherited through a role
 
+## Multi-tenant authorization
+
+Sentinel models authorization by tenant, organization, team, or another isolated boundary through `scope()`.
+
+A `scope` is a `Subject`: an authorization entity that can also have roles and permissions. For a tenant to constrain authorizations,
+it must itself be a subject with its own authorizations.
+
+### Subjects and tenants
+
+A `Subject` is the authorization object: the entity that receives roles, permissions, and denials. It does not necessarily represent a
+user.
+
+In a multi-tenant application, the subject is commonly a membership:
+
+- A user can have multiple memberships.
+- Each membership is a distinct subject.
+- Each subject has one direct `scope`, or none.
+- A membership can belong to an organization, team, or tenant.
+- A tenant can have its own roles and permissions, which constrain the authorizations of its subjects.
+
+```php
+$membership->scope(); // $organization
+```
+
+One scope can itself have a scope. This supports hierarchies; for example, a membership belongs to a team and the team belongs to an
+organization.
+
+### Global and tenant roles
+
+A `Role` can also have a `scope`:
+
+- A role without a `scope` is global.
+- A role with a `scope` belongs only to that tenant.
+- A subject within a tenant can receive global roles.
+- A subject within a tenant can receive local roles only from that same tenant.
+- A subject without a tenant cannot receive a local role.
+
+| Subject    | Role     | Result   |
+|------------|----------|----------|
+| No `scope` | Global   | Allowed  |
+| No `scope` | Tenant A | Rejected |
+| Tenant A   | Global   | Allowed  |
+| Tenant A   | Tenant A | Allowed  |
+| Tenant A   | Tenant B | Rejected |
+
+### Role catalog
+
+Role codes follow rules that prevent ambiguity:
+
+- The same local code can exist in different tenants.
+- Two roles with the same code cannot exist within the same tenant.
+- A global role and a local role cannot share a code.
+
+For example, `administrator` can exist in Organization A and Organization B, but it cannot also exist as a global role.
+
+### Permission boundaries
+
+A `scope` caps the permissions that can be granted to its subjects and roles.
+
+Before writing, `grant()` validates:
+
+1. Every role is compatible with the subject's `scope`.
+2. A direct permission is allowed by the subject's `scope`.
+3. A permission added to a role is allowed by the role's `scope`.
+4. Every permission granted by a role is allowed by the subject's `scope` before that role is assigned.
+
+If any scope validation fails, Sentinel rejects the complete operation. It does not create any of the requested authorizations partially.
+
+An explicit denial does not need scope approval because it only reduces access.
+
+`revoke()` does not reject a relationship based on scope: it must always be able to remove an old, invalid, or out-of-band assignment.
+
+### Permission evaluation
+
+`can()` requires a permission to be allowed by the subject and by every `scope` that participates in evaluation.
+
+With `Junction::And`, every requested permission must be allowed at every level.
+
+With `Junction::Or`, at least one same permission must be allowed at every level. Sentinel does not combine different permissions from the
+subject and its scope to produce a valid result.
+
+An explicit denial at any level overrides a granted permission.
+
+### Scope propagation
+
+By default, Sentinel evaluates the direct `scope` and all of its ancestors through `TransitiveScopePropagationPolicy`.
+
+Use `DirectScopePropagationPolicy` when only the direct scope must be evaluated.
+
+Cycles are invalid. If a subject eventually points to itself, directly or indirectly, Sentinel throws `ScopeCycleDetected`.
+
+### Roles and scopes
+
+Scopes cap permissions, not role membership.
+
+Therefore, `is()` and `isnt()` only check whether the subject has the role. Use `can()` to evaluate whether that role permits an action
+within the tenant.
+
 ### Repositories
 
 Repositories persist both the catalog and the relationships between subjects, roles, and permissions.
 
 - **RoleRepository**
     - Contract: [`RoleRepository`](src/Repositories/RoleRepository.php)
-    - Stores role records with `id`, `code`, `name`, and `description`.
-    - `lookup(...)` returns the typed `Roles` collection (concrete `Role` instances).
+    - Stores role records with `id`, `code`, `name`, `description`, and an optional `scope`.
+    - `lookup(Subject|null $scope, ...$codes)` returns roles whose scope exactly matches the supplied scope. Pass `null` to look up
+      global roles.
+    - `match(...$codes)` returns every role with the requested codes, regardless of scope.
+    - `create(..., Subject|null $scope = null)` persists either a global role or one scoped to a subject.
 
 - **PermissionRepository**
     - Contract: [`PermissionRepository`](src/Repositories/PermissionRepository.php)
@@ -113,6 +215,7 @@ Repositories persist both the catalog and the relationships between subjects, ro
     - Contract: [`RolePermissionRepository`](src/Repositories/RolePermissionRepository.php)
     - Persists `role ↔ permission` links.
     - Roles only grant permissions; they do not support explicit denials.
+    - `grants(Role ...$roles)` returns the deduplicated union of permissions granted by the supplied roles.
 
 Each repository exposes the combination of `lookup`, `grants`, `exists`, `allOf`, `create`, `update`, and `remove` that belongs to its
 own contract. Subject role and subject permission repositories also expose `purge($subject)` for complete subject authorization cleanup.
@@ -236,6 +339,9 @@ $cached->subjectPermissionRepository();
 The returned repositories **implement the same interfaces as the base ones**. Your consumer code does not change: you pass
 `$cached->subjectRoleRepository()` where you used to pass `$mySubjectRoleRepo`.
 
+After a successful subject-role or subject-permission mutation, the cached repository forgets that subject's projection. It never patches
+the existing projection in place; the next authorization read rebuilds it from the wrapped repositories.
+
 ### Authorization cache store
 
 [`AuthorizationCacheStore`](src/Cache/AuthorizationCacheStore.php) is the contract that encapsulates projection storage, global
@@ -305,6 +411,11 @@ orphaned (they are no longer read, and the driver eventually clears them).
 answers boolean questions about a `Subject`. It is constructed once with both providers and is then ready to answer `can`, `cannot`,
 `is`, and `isnt` at any time.
 
+Its optional third constructor argument is a [`ScopePropagationPolicy`](src/Propagation/ScopePropagationPolicy.php). Sentinel uses
+[`TransitiveScopePropagationPolicy`](src/Propagation/TransitiveScopePropagationPolicy.php) by default; use
+[`DirectScopePropagationPolicy`](src/Propagation/DirectScopePropagationPolicy.php) when only the immediate scope must participate in a
+permission check.
+
 ### `can()`
 
 Returns `true` when the subject has at least one of the requested permissions, or all of them when you pass `Junction::And`.
@@ -344,6 +455,9 @@ single call.
 ### Granter
 
 [`Granter`](src/Operators/Granter.php) grants assignments.
+
+Its constructor requires an `Authorizer` after the repositories. Sentinel uses it to validate the requested permissions before mutating
+an authorization relationship.
 
 ```php
 $granter->grant($user, $admin);                  // user has the admin role
@@ -394,11 +508,14 @@ $roleRegistry->update($admin->id(), 'Administrator', 'Full access');
 $roleRegistry->remove($admin->id());
 ```
 
-- `create()` returns the entity with its assigned id. It throws `*AlreadyExists` when the code already exists.
+- `create()` returns the entity with its assigned id. It throws `*AlreadyExists` when the code already exists. `RoleRegistry::create()`
+  accepts an optional scope.
 - `update()` operates by id. Passing `null` as description clears it.
 - `remove()` is idempotent: if the id does not exist, it makes no changes. If the entity is in use, it throws `*InUse`.
-- `lookup(array $codes)` returns the typed collection (`Roles` / `Permissions`) of the entities whose codes match.
-- `find(string $code)` returns the single entity matching the code, or `null` if no entity has that code.
+- `lookup()` returns the typed collection of entities whose codes match. `RoleRegistry::lookup()` additionally requires
+  `Subject|null $scope` as its first argument and resolves roles for that exact scope.
+- `find()` returns the entity matching the code, or `null` when none exists. `RoleRegistry::find()` additionally requires
+  `Subject|null $scope`.
 
 ## Errors
 
@@ -415,15 +532,16 @@ try {
 
 Specific exceptions:
 
-| Exception                 | Thrown when                                                            |
-|---------------------------|------------------------------------------------------------------------|
-| `PermissionAlreadyExists` | `PermissionRegistry::create` receives a code that already exists.      |
-| `RoleAlreadyExists`       | `RoleRegistry::create` receives a code that already exists.            |
-| `PermissionNotFound`      | `PermissionRegistry::update` or an operator cannot find the id/code.   |
-| `RoleNotFound`            | `RoleRegistry::update` or an operator cannot find the id/code.         |
-| `PermissionInUse`         | `PermissionRegistry::remove` detects a linked subject or role.         |
-| `RoleInUse`               | `RoleRegistry::remove` detects a subject linked to that role.          |
-| `InvalidAuthorization`    | `Granter` receives roles as targets from an owner that is also a role. |
+| Exception                 | Thrown when                                                                                                        |
+|---------------------------|--------------------------------------------------------------------------------------------------------------------|
+| `PermissionAlreadyExists` | `PermissionRegistry::create` receives a code that already exists.                                                  |
+| `RoleAlreadyExists`       | `RoleRegistry::create` receives a code that already exists.                                                        |
+| `PermissionNotFound`      | `PermissionRegistry::update` or an operator cannot find the id/code.                                               |
+| `RoleNotFound`            | `RoleRegistry::update` or an operator cannot find the id/code.                                                     |
+| `PermissionInUse`         | `PermissionRegistry::remove` detects a linked subject or role.                                                     |
+| `RoleInUse`               | `RoleRegistry::remove` detects a subject linked to that role.                                                      |
+| `InvalidAuthorization`    | `Granter` receives a role for a role owner, an incompatible scoped role, or permissions outside the owner's scope. |
+| `ScopeCycleDetected`      | A scope propagation policy detects a repeated subject.                                                             |
 
 ## Development
 
