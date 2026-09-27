@@ -15,13 +15,15 @@ namespace Vaened\Sentinel\Tests\Unit\Cache;
 use RuntimeException;
 use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Cache\CachedRolePermissionRepository;
+use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Repositories\RolePermissionRepository;
 
 final class CachedRolePermissionRepositoryTest extends CacheTestCase
 {
-    public function test_lookup_all_of_and_exists_delegate_without_touching_the_cache_version(): void
+    public function test_lookup_all_of_grants_and_exists_delegate_without_touching_the_cache_version(): void
     {
         $role       = $this->cachedRole(10, 'cashier', 'Cashier');
+        $manager    = $this->cachedRole(11, 'manager', 'Manager');
         $permission = $this->cachedPermission(20, 'documents.create', 'Create Documents');
 
         $repository = $this->createMock(RolePermissionRepository::class);
@@ -34,6 +36,10 @@ final class CachedRolePermissionRepositoryTest extends CacheTestCase
                    ->with($role)
                    ->willReturn(new Authorizations([$permission]));
         $repository->expects(self::once())
+                   ->method('grants')
+                   ->with($role, $manager)
+                   ->willReturn(new Permissions([$permission]));
+        $repository->expects(self::once())
                    ->method('exists')
                    ->with(20)
                    ->willReturn(true);
@@ -44,6 +50,7 @@ final class CachedRolePermissionRepositoryTest extends CacheTestCase
 
         self::assertSame(['documents.create'], $cached->lookup($role, 'documents.create')->codes());
         self::assertSame(['documents.create'], $cached->allOf($role)->codes());
+        self::assertSame(['documents.create'], $cached->grants($role, $manager)->codes());
         self::assertTrue($cached->exists(20));
         self::assertSame($initialVersion, $cache->currentVersion());
     }

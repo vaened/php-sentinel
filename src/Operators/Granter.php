@@ -153,9 +153,11 @@ final readonly class Granter extends Operator
 
     private function ensureRolesFitScope(Subject $subject, Roles $roles): void
     {
-        foreach ($roles as $role) {
-            $this->ensureScopeAllows($subject, $this->rolePermissions->allOf($role)->codes());
+        if ($subject->scope() === null || $roles->isEmpty()) {
+            return;
         }
+
+        $this->ensureScopeAllows($subject, $this->rolePermissions->grants(...$roles->values())->codes());
     }
 
     private function ensureScopeAllows(Subject|Role $owner, array $permissions): void

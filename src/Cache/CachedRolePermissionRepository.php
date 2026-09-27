@@ -14,6 +14,7 @@ namespace Vaened\Sentinel\Cache;
 
 use Vaened\Sentinel\Authorizations;
 use Vaened\Sentinel\Permission;
+use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Repositories\RolePermissionRepository as RolePermissionRepositoryContract;
 use Vaened\Sentinel\Role;
 
@@ -34,6 +35,11 @@ final readonly class CachedRolePermissionRepository implements RolePermissionRep
     public function allOf(Role $role): Authorizations
     {
         return $this->repository->allOf($role);
+    }
+
+    public function grants(Role ...$roles): Permissions
+    {
+        return $this->repository->grants(...$roles);
     }
 
     public function exists(int|string $permissionId): bool

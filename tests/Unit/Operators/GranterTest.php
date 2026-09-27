@@ -16,6 +16,7 @@ use RuntimeException;
 use Vaened\Sentinel\Errors\InvalidAuthorization;
 use Vaened\Sentinel\Errors\RoleNotFound;
 use Vaened\Sentinel\Operators\Granter;
+use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Permissions;
 use Vaened\Sentinel\Repositories\PermissionRepository;
 use Vaened\Sentinel\Repositories\RolePermissionRepository;
@@ -24,6 +25,7 @@ use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Roles;
 use Vaened\Sentinel\SubjectPermissions;
+use Vaened\Sentinel\Tests\Runtime\Repositories\InMemorySubjectPermissionRepository;
 use Vaened\Sentinel\Tests\Runtime\TestPermission;
 use Vaened\Sentinel\Tests\Runtime\TestRole;
 use Vaened\Sentinel\Tests\Runtime\TestSubject;
@@ -210,6 +212,52 @@ final class GranterTest extends TestCase
             roles       : $roles,
             subjectRoles: $assignments,
         )->grant($subject, $role);
+    }
+
+    public function test_grant_validates_multiple_role_permissions_in_a_single_batch(): void
+    {
+        $scope       = new TestSubject(2);
+        $subject     = new TestSubject(1, $scope);
+        $editor      = new TestRole(10, 'editor', 'Editor', scope: $scope);
+        $publisher   = new TestRole(11, 'publisher', 'Publisher', scope: $scope);
+        $edit        = new TestPermission(20, 'posts.edit', 'Edit Posts');
+        $publish     = new TestPermission(21, 'posts.publish', 'Publish Posts');
+        $roles       = $this->createMock(RoleRepository::class);
+        $assignments = $this->createMock(SubjectRoleRepository::class);
+        $permissions = new InMemorySubjectPermissionRepository();
+
+        $roles->expects(self::once())
+              ->method('match')
+              ->with('editor', 'publisher')
+              ->willReturn(new Roles([$editor, $publisher]));
+
+        $assignments->expects(self::once())
+                    ->method('lookup')
+                    ->with($subject, 'editor', 'publisher')
+                    ->willReturn(new Roles([]));
+        $assignments->expects(self::once())
+                    ->method('create')
+                    ->with($subject, $editor, $publisher);
+
+        $rolePermissions = $this->createMock(RolePermissionRepository::class);
+        $rolePermissions->expects(self::once())
+                        ->method('grants')
+                        ->with($editor, $publisher)
+                        ->willReturn(new Permissions([$edit, $publish]));
+        $rolePermissions->expects(self::never())->method('allOf');
+
+        $permissions->create(
+            $scope,
+            SubjectPermissionSnapshot::from($edit),
+            SubjectPermissionSnapshot::from($publish),
+        );
+
+        $this->granter(
+            roles             : $roles,
+            subjectRoles      : $assignments,
+            subjectPermissions: $permissions,
+            rolePermissions   : $rolePermissions,
+        )->grant($subject, $editor, $publisher);
     }
 
     public function test_grant_skips_an_assigned_role(): void

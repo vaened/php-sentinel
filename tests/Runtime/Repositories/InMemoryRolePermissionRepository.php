@@ -45,6 +45,19 @@ final class InMemoryRolePermissionRepository implements RolePermissionRepository
         return new Permissions(array_values($this->items[$role->id()] ?? []));
     }
 
+    public function grants(Role ...$roles): Permissions
+    {
+        $grants = [];
+
+        foreach ($roles as $role) {
+            foreach ($this->items[$role->id()] ?? [] as $permission) {
+                $grants[$permission->code()] ??= $permission;
+            }
+        }
+
+        return new Permissions(array_values($grants));
+    }
+
     public function create(Role $role, Permission ...$permissions): void
     {
         foreach ($permissions as $permission) {
