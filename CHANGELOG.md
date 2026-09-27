@@ -5,6 +5,36 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-09-26
+
+### Added
+
+- Scoped authorization support. Subjects and roles can expose an optional scope, and `Authorizer::can()` evaluates permissions across
+  the configured scope chain. Transitive propagation is the default; direct propagation is available when only the immediate scope must
+  participate.
+- Scope-cycle detection during transitive authorization checks.
+- `RolePermissionRepository::grants(Role ...$roles)` for retrieving the deduplicated permissions granted by multiple roles in one
+  operation.
+
+### Changed
+
+- `Granter` now validates scoped role and permission assignments before writing any relationship. A rejected request leaves every
+  requested assignment unchanged.
+- Cached subject-role and subject-permission mutations now forget the affected projection after persistence succeeds. The next lookup
+  rebuilds it from the wrapped repositories instead of applying a partial in-memory patch.
+
+### Breaking
+
+- `Subject` and `Role` now extend `Scopeable`; implementations must provide `scope(): Subject|null`.
+- `RoleRepository::lookup()` now requires `Subject|null $scope` as its first argument. `RoleRepository::create()` accepts an optional
+  scope, and the contract adds `match(...$codes)`.
+- `RoleRegistry::lookup()` and `RoleRegistry::find()` now require a scope argument.
+- `RolePermissionRepository` implementations must add `grants(Role ...$roles): Permissions`.
+- `Granter` now requires an `Authorizer` constructor dependency.
+- `CachedSubjectRoleRepository` no longer accepts a `RolePermissionRepository` constructor dependency.
+
+[0.10.0]: https://github.com/vaened/php-sentinel/compare/v0.9.0...v0.10.0
+
 ## [0.9.0] - 2026-09-25
 
 ### Added
