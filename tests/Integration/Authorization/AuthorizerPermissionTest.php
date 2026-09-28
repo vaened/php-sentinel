@@ -31,6 +31,7 @@ use Vaened\Sentinel\Propagation\TransitiveScopePropagationPolicy;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
+use Vaened\Sentinel\Scopeable;
 use Vaened\Sentinel\Subject;
 use Vaened\Sentinel\SubjectPermissions;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryPermissionRepository;
@@ -483,7 +484,7 @@ final class AuthorizerPermissionTest extends TestCase
     {
         $permission = $this->permission('posts.edit');
         $policy     = new class implements ScopePropagationPolicy {
-            public function scopes(Subject $subject): iterable
+            public function scopes(Scopeable $owner): iterable
             {
                 return [];
             }

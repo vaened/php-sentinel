@@ -12,13 +12,13 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Propagation;
 
-use Vaened\Sentinel\Subject;
+use Vaened\Sentinel\Scopeable;
 
 final class DirectScopePropagationPolicy implements ScopePropagationPolicy
 {
-    public function scopes(Subject $subject): iterable
+    public function scopes(Scopeable $owner): iterable
     {
-        if (($scope = $subject->scope()) !== null) {
+        if (($scope = $owner->scope()) !== null) {
             yield $scope;
         }
     }

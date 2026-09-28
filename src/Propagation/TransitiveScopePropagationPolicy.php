@@ -14,17 +14,20 @@ namespace Vaened\Sentinel\Propagation;
 
 use Vaened\Sentinel\Errors\ScopeCycleDetected;
 use Vaened\Sentinel\Identifiers;
+use Vaened\Sentinel\Scopeable;
 use Vaened\Sentinel\Subject;
 
 final class TransitiveScopePropagationPolicy implements ScopePropagationPolicy
 {
-    public function scopes(Subject $subject): iterable
+    public function scopes(Scopeable $owner): iterable
     {
-        $seen = [
-            $this->identity($subject) => true,
-        ];
+        $seen = [];
 
-        for ($scope = $subject->scope(); $scope !== null; $scope = $scope->scope()) {
+        if ($owner instanceof Subject) {
+            $seen[$this->identity($owner)] = true;
+        }
+
+        for ($scope = $owner->scope(); $scope !== null; $scope = $scope->scope()) {
             $identity = $this->identity($scope);
 
             if (isset($seen[$identity])) {

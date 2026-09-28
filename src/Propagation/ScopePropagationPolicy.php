@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Propagation;
 
+use Vaened\Sentinel\Scopeable;
 use Vaened\Sentinel\Subject;
 
 interface ScopePropagationPolicy
@@ -19,5 +20,5 @@ interface ScopePropagationPolicy
     /**
      * @return iterable<Subject>
      */
-    public function scopes(Subject $subject): iterable;
+    public function scopes(Scopeable $owner): iterable;
 }
