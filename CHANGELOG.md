@@ -5,6 +5,27 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-09-27
+
+### Added
+
+- `ScopeBoundary` for validating that every permission in a grant is allowed by each applicable scope.
+- `NoPropagationPolicy` for authorization checks and grants that must ignore scopes entirely.
+
+### Fixed
+
+- `DirectScopePropagationPolicy` now applies the same direct-scope rule to grants: only the owner's immediate scope is evaluated, not its
+  ancestors.
+
+### Breaking
+
+- `Granter` now requires a `ScopeBoundary` constructor dependency instead of an `Authorizer`.
+- Custom `ScopePropagationPolicy` implementations must change `scopes(Subject $subject)` to `scopes(Scopeable $owner)`.
+- Removed `SubjectAuthorizationProjection::integrate()` and `SubjectAuthorizationProjection::override()`; cached authorization
+  projections are no longer updated incrementally after mutations.
+
+[0.11.0]: https://github.com/vaened/php-sentinel/compare/v0.10.0...v0.11.0
+
 ## [0.10.0] - 2026-09-26
 
 ### Added
@@ -30,7 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scope, and the contract adds `match(...$codes)`.
 - `RoleRegistry::lookup()` and `RoleRegistry::find()` now require a scope argument.
 - `RolePermissionRepository` implementations must add `grants(Role ...$roles): Permissions`.
-- `Granter` now requires a `ScopeBoundary` constructor dependency.
 - `CachedSubjectRoleRepository` no longer accepts a `RolePermissionRepository` constructor dependency.
 
 [0.10.0]: https://github.com/vaened/php-sentinel/compare/v0.9.0...v0.10.0
