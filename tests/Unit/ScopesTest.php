@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Tests\Unit;
 
 use Vaened\Sentinel\Scopes;
-use Vaened\Sentinel\Subject;
+use Vaened\Sentinel\Tests\Runtime\DifferentConcreteSubject;
 use Vaened\Sentinel\Tests\Runtime\TestSubject;
 use Vaened\Sentinel\Tests\TestCase;
 
@@ -23,18 +23,7 @@ final class ScopesTest extends TestCase
     {
         self::assertTrue(Scopes::same(new TestSubject(1), new TestSubject(1)));
         self::assertFalse(Scopes::same(new TestSubject(1), new TestSubject(2)));
-        self::assertFalse(Scopes::same(new TestSubject(1),
-            new class implements Subject {
-                public function id(): int|string
-                {
-                    return 1;
-                }
-
-                public function scope(): Subject|null
-                {
-                    return null;
-                }
-            }));
+        self::assertFalse(Scopes::same(new TestSubject(1), new DifferentConcreteSubject(1)));
     }
 
     public function test_same_handles_unscoped_values(): void

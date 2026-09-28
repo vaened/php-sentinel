@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Unit;
 
-use Vaened\Sentinel\Identifier;
 use Vaened\Sentinel\Identifiers;
+use Vaened\Sentinel\Tests\Runtime\TestIdentifier;
 use Vaened\Sentinel\Tests\TestCase;
 
 final class IdentifiersTest extends TestCase
@@ -26,23 +26,7 @@ final class IdentifiersTest extends TestCase
 
     public function test_value_resolves_identifier_objects_to_native_value(): void
     {
-        $identifier = new readonly class('user-1') implements Identifier
-        {
-            public function __construct(
-                private string $value,
-            ) {
-            }
-
-            public function value(): int|string
-            {
-                return $this->value;
-            }
-
-            public function __toString(): string
-            {
-                return $this->value;
-            }
-        };
+        $identifier = new TestIdentifier('user-1');
 
         self::assertSame('user-1', Identifiers::value($identifier));
     }

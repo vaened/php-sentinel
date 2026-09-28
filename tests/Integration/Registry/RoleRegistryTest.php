@@ -15,15 +15,15 @@ namespace Vaened\Sentinel\Tests\Integration\Registry;
 use Vaened\Sentinel\Errors\RoleAlreadyExists;
 use Vaened\Sentinel\Errors\RoleInUse;
 use Vaened\Sentinel\Errors\RoleNotFound;
-use Vaened\Sentinel\Identifier;
 use Vaened\Sentinel\Registry\RoleRegistry;
 use Vaened\Sentinel\Repositories\RoleRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Roles;
-use Vaened\Sentinel\Subject;
+use Vaened\Sentinel\Tests\Runtime\DifferentConcreteSubject;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRolePermissionRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRoleRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemorySubjectRoleRepository;
+use Vaened\Sentinel\Tests\Runtime\TestIdentifier;
 use Vaened\Sentinel\Tests\Runtime\TestRole;
 use Vaened\Sentinel\Tests\Runtime\TestSubject;
 use Vaened\Sentinel\Tests\TestCase;
@@ -183,46 +183,14 @@ final class RoleRegistryTest extends TestCase
 
     public function test_lookup_matches_scope_by_concrete_subject_class_and_normalized_identifier(): void
     {
-        $identifier = new readonly class('organization-1') implements Identifier {
-            public function __construct(
-                private string $value,
-            )
-            {
-            }
-
-            public function value(): int|string
-            {
-                return $this->value;
-            }
-
-            public function __toString(): string
-            {
-                return $this->value;
-            }
-        };
+        $identifier = new TestIdentifier('organization-1');
 
         $scope = new TestSubject($identifier);
         $role  = $this->registry->create('administrator', 'Administrator', scope: $scope);
 
         self::assertSame([$role], $this->registry->lookup(new TestSubject('organization-1'), ['administrator'])->values());
 
-        $differentSubjectClass = new readonly class('organization-1') implements Subject {
-            public function __construct(
-                private string $id,
-            )
-            {
-            }
-
-            public function id(): int|string|Identifier
-            {
-                return $this->id;
-            }
-
-            public function scope(): Subject|null
-            {
-                return null;
-            }
-        };
+        $differentSubjectClass = new DifferentConcreteSubject('organization-1');
 
         self::assertTrue($this->registry->lookup($differentSubjectClass, ['administrator'])->isEmpty());
     }
