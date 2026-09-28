@@ -12,12 +12,16 @@ declare(strict_types=1);
 
 namespace Vaened\Sentinel\Tests\Integration\Authorization;
 
+use Vaened\Sentinel\Authorization\PermissionEntryProvider;
 use Vaened\Sentinel\Authorization\ScopeBoundary;
 use Vaened\Sentinel\Errors\ScopeCycleDetected;
 use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Permission;
 use Vaened\Sentinel\Propagation\DirectScopePropagationPolicy;
+use Vaened\Sentinel\Propagation\NoPropagationPolicy;
 use Vaened\Sentinel\Propagation\TransitiveScopePropagationPolicy;
+use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
+use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryPermissionRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryRolePermissionRepository;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemorySubjectPermissionRepository;
@@ -92,6 +96,32 @@ final class ScopeBoundaryTest extends TestCase
         self::assertTrue($this->boundary(new DirectScopePropagationPolicy())->allows($owner, [$permission->code()]));
     }
 
+    public function test_no_propagation_ignores_all_scopes(): void
+    {
+        $scope      = new TestSubject(2);
+        $owner      = new TestSubject(1, $scope);
+        $permission = $this->permission('posts.edit');
+        $this->subjectPermissions->create($scope, SubjectPermissionSnapshot::from($permission, true));
+
+        self::assertTrue($this->boundary(new NoPropagationPolicy())->allows($owner, [$permission->code()]));
+    }
+
+    public function test_no_propagation_does_not_load_scope_permissions(): void
+    {
+        $permissions = $this->createMock(SubjectPermissionRepository::class);
+        $roles       = $this->createMock(SubjectRoleRepository::class);
+        $permissions->expects(self::never())
+                    ->method('lookup');
+        $roles->expects(self::never())
+              ->method('grants');
+        $boundary = new ScopeBoundary(
+            new PermissionEntryProvider($permissions, $roles),
+            new NoPropagationPolicy(),
+        );
+
+        self::assertTrue($boundary->allows(new TestSubject(1, new TestSubject(2)), ['posts.edit']));
+    }
+
     public function test_transitive_propagation_requires_every_ancestor_scope_to_allow_every_permission(): void
     {
         $organization = new TestSubject(3);
@@ -153,7 +183,7 @@ final class ScopeBoundaryTest extends TestCase
     }
 
     private function boundary(
-        DirectScopePropagationPolicy|TransitiveScopePropagationPolicy|null $propagation = null,
+        DirectScopePropagationPolicy|NoPropagationPolicy|TransitiveScopePropagationPolicy|null $propagation = null,
     ): ScopeBoundary
     {
         return $this->createScopeBoundary(

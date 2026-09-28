@@ -16,6 +16,7 @@ use Vaened\Sentinel\Errors\InvalidAuthorization;
 use Vaened\Sentinel\Operators\Granter;
 use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Propagation\DirectScopePropagationPolicy;
+use Vaened\Sentinel\Propagation\NoPropagationPolicy;
 use Vaened\Sentinel\Propagation\ScopePropagationPolicy;
 use Vaened\Sentinel\Propagation\TransitiveScopePropagationPolicy;
 use Vaened\Sentinel\SubjectPermissionState;
@@ -301,6 +302,35 @@ final class GranterTest extends TestCase
         $granter->grant($subject, $role);
 
         self::assertTrue($this->subjectRoles->lookup($subject, $role->code())->hasCode($role->code()));
+    }
+
+    public function test_grant_with_no_propagation_ignores_all_scopes(): void
+    {
+        $scope      = new TestSubject(2);
+        $subject    = new TestSubject(1, $scope);
+        $permission = $this->permissions->create('posts.edit', 'Edit Posts');
+        $granter    = $this->granter(new NoPropagationPolicy());
+        $this->subjectPermissions->create($scope, SubjectPermissionSnapshot::from($permission, true));
+
+        $granter->grant($subject, $permission);
+
+        self::assertSame(
+            SubjectPermissionState::Direct,
+            $this->subjectPermissions->lookup($subject, $permission->code())->find($permission->code())?->state(),
+        );
+    }
+
+    public function test_grant_with_no_propagation_still_rejects_a_role_from_another_scope(): void
+    {
+        $subjectScope = new TestSubject(2);
+        $roleScope    = new TestSubject(3);
+        $subject      = new TestSubject(1, $subjectScope);
+        $role         = $this->roles->create('editor', 'Editor', scope: $roleScope);
+        $granter      = $this->granter(new NoPropagationPolicy());
+
+        $this->expectException(InvalidAuthorization::class);
+
+        $granter->grant($subject, $role);
     }
 
     public function test_grant_rejects_a_role_permission_not_allowed_by_the_roles_scope(): void

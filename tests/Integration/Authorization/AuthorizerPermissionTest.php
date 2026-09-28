@@ -26,12 +26,12 @@ use Vaened\Sentinel\Operators\Revoker;
 use Vaened\Sentinel\Operators\SubjectPermissionSnapshot;
 use Vaened\Sentinel\Permission;
 use Vaened\Sentinel\Propagation\DirectScopePropagationPolicy;
+use Vaened\Sentinel\Propagation\NoPropagationPolicy;
 use Vaened\Sentinel\Propagation\ScopePropagationPolicy;
 use Vaened\Sentinel\Propagation\TransitiveScopePropagationPolicy;
 use Vaened\Sentinel\Repositories\SubjectPermissionRepository;
 use Vaened\Sentinel\Repositories\SubjectRoleRepository;
 use Vaened\Sentinel\Role;
-use Vaened\Sentinel\Scopeable;
 use Vaened\Sentinel\Subject;
 use Vaened\Sentinel\SubjectPermissions;
 use Vaened\Sentinel\Tests\Runtime\Repositories\InMemoryPermissionRepository;
@@ -480,19 +480,13 @@ final class AuthorizerPermissionTest extends TestCase
         self::assertFalse($authorizer->can($subject, ['posts.edit']));
     }
 
-    public function test_scope_propagation_cannot_omit_a_subjects_own_permissions(): void
+    public function test_no_propagation_does_not_omit_a_subjects_own_permissions(): void
     {
         $permission = $this->permission('posts.edit');
-        $policy     = new class implements ScopePropagationPolicy {
-            public function scopes(Scopeable $owner): iterable
-            {
-                return [];
-            }
-        };
         $authorizer = new Authorizer(
             new PermissionEntryProvider($this->subjectPermissions, $this->subjectRoles),
             new RoleEntryProvider($this->subjectRoles),
-            $policy,
+            new NoPropagationPolicy(),
         );
 
         self::assertFalse($authorizer->can($this->subject, ['posts.edit']));
@@ -500,6 +494,28 @@ final class AuthorizerPermissionTest extends TestCase
         $this->granter->grant($this->subject, $permission);
 
         self::assertTrue($authorizer->can($this->subject, ['posts.edit']));
+    }
+
+    public function test_no_propagation_loads_only_the_subjects_permissions(): void
+    {
+        $scope       = new TestSubject(2);
+        $subject     = new TestSubject(1, $scope);
+        $permission  = new TestPermission(1, 'posts.edit', 'Edit Posts');
+        $permissions = $this->createMock(SubjectPermissionRepository::class);
+        $roles       = $this->createMock(SubjectRoleRepository::class);
+        $permissions->expects(self::once())
+                    ->method('lookup')
+                    ->with($subject, 'posts.edit')
+                    ->willReturn(new SubjectPermissions([TestSubjectPermission::from($permission)]));
+        $roles->expects(self::never())
+              ->method('grants');
+        $authorizer = new Authorizer(
+            new PermissionEntryProvider($permissions, $roles),
+            new RoleEntryProvider($roles),
+            new NoPropagationPolicy(),
+        );
+
+        self::assertTrue($authorizer->can($subject, [$permission->code()]));
     }
 
     public function test_can_throws_for_a_self_referential_scope(): void

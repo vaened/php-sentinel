@@ -165,9 +165,12 @@ An explicit denial at any level overrides a granted permission.
 
 ### Scope propagation
 
-By default, Sentinel evaluates the direct `scope` and all of its ancestors through `TransitiveScopePropagationPolicy`.
+By default, Sentinel evaluates the direct `scope` and all of its ancestors through
+[`TransitiveScopePropagationPolicy`](src/Propagation/TransitiveScopePropagationPolicy.php).
 
-Use `DirectScopePropagationPolicy` when only the direct scope must be evaluated.
+Use [`DirectScopePropagationPolicy`](src/Propagation/DirectScopePropagationPolicy.php) when only the direct scope must be evaluated.
+
+Use [`NoPropagationPolicy`](src/Propagation/NoPropagationPolicy.php) when scopes must not participate in permission checks.
 
 Cycles are invalid. If a subject eventually points to itself, directly or indirectly, Sentinel throws `ScopeCycleDetected`.
 
@@ -414,7 +417,9 @@ answers boolean questions about a `Subject`. It is constructed once with both pr
 Its optional third constructor argument is a [`ScopePropagationPolicy`](src/Propagation/ScopePropagationPolicy.php). Sentinel uses
 [`TransitiveScopePropagationPolicy`](src/Propagation/TransitiveScopePropagationPolicy.php) by default; use
 [`DirectScopePropagationPolicy`](src/Propagation/DirectScopePropagationPolicy.php) when only the immediate scope must participate in a
-permission check.
+permission check, or [`NoPropagationPolicy`](src/Propagation/NoPropagationPolicy.php) when scopes must not participate.
+
+Pass the same policy instance to the `ScopeBoundary` supplied to `Granter`, so reads and grants enforce the same scope traversal.
 
 ### `can()`
 
