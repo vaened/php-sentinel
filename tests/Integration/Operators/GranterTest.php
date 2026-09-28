@@ -333,6 +333,26 @@ final class GranterTest extends TestCase
         }
     }
 
+    public function test_grant_does_not_partially_assign_roles_when_one_roles_permission_exceeds_scope(): void
+    {
+        $scope     = new TestSubject(2);
+        $subject   = new TestSubject(1, $scope);
+        $allowed   = $this->permissions->create('posts.edit', 'Edit Posts');
+        $forbidden = $this->permissions->create('posts.publish', 'Publish Posts');
+        $editor    = $this->roles->create('editor', 'Editor', scope: $scope);
+        $publisher = $this->roles->create('publisher', 'Publisher', scope: $scope);
+        $this->subjectPermissions->create($scope, SubjectPermissionSnapshot::from($allowed));
+        $this->rolePermissions->create($editor, $allowed);
+        $this->rolePermissions->create($publisher, $forbidden);
+
+        try {
+            $this->granter->grant($subject, $editor, $publisher);
+            self::fail('Expected roles with a permission that exceeds the subject scope to be rejected.');
+        } catch (InvalidAuthorization) {
+            self::assertTrue($this->subjectRoles->allOf($subject)->isEmpty());
+        }
+    }
+
     public function test_grant_does_not_partially_assign_roles_when_a_direct_permission_exceeds_scope(): void
     {
         $scope      = new TestSubject(2);
