@@ -15,7 +15,7 @@ namespace Vaened\Sentinel\Cache;
 final readonly class CacheSettings
 {
     // default ttl is 12 hours
-    public const int DEFAULT_TTL_IN_SECONDS = 43200;
+    public const DEFAULT_TTL_IN_SECONDS = 43200;
 
     public function __construct(
         public string   $prefix,
