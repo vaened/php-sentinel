@@ -81,7 +81,10 @@ final class CachedAuthorizerFlowTest extends TestCase
             $this->repositories->subjectRoleRepository(),
             $this->repositories->subjectPermissionRepository(),
             $this->repositories->rolePermissionRepository(),
-            $this->authorizer,
+            $this->createScopeBoundary(
+                $this->repositories->subjectPermissionRepository(),
+                $this->repositories->subjectRoleRepository(),
+            ),
         );
         $this->denier  = new Denier(
             $this->repositories->roleRepository(),

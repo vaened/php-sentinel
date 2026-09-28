@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scope, and the contract adds `match(...$codes)`.
 - `RoleRegistry::lookup()` and `RoleRegistry::find()` now require a scope argument.
 - `RolePermissionRepository` implementations must add `grants(Role ...$roles): Permissions`.
-- `Granter` now requires an `Authorizer` constructor dependency.
+- `Granter` now requires a `ScopeBoundary` constructor dependency.
 - `CachedSubjectRoleRepository` no longer accepts a `RolePermissionRepository` constructor dependency.
 
 [0.10.0]: https://github.com/vaened/php-sentinel/compare/v0.9.0...v0.10.0

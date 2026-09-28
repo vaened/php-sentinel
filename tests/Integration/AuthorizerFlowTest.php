@@ -62,7 +62,7 @@ final class AuthorizerFlowTest extends TestCase
             $subjectRoles,
             $this->subjectPermissions,
             $rolePermissions,
-            $this->authorizer,
+            $this->createScopeBoundary($this->subjectPermissions, $subjectRoles),
         );
         $this->denier  = new Denier(
             $this->roles,

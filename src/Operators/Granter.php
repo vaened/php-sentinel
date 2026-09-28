@@ -13,8 +13,7 @@ declare(strict_types=1);
 namespace Vaened\Sentinel\Operators;
 
 use Vaened\Sentinel\Authorization;
-use Vaened\Sentinel\Authorization\Authorizer;
-use Vaened\Sentinel\Authorization\Junction;
+use Vaened\Sentinel\Authorization\ScopeBoundary;
 use Vaened\Sentinel\Errors\InvalidAuthorization;
 use Vaened\Sentinel\Permission;
 use Vaened\Sentinel\Permissions;
@@ -38,7 +37,7 @@ final readonly class Granter extends Operator
         protected SubjectRoleRepository       $subjectRoles,
         protected SubjectPermissionRepository $subjectPermissions,
         protected RolePermissionRepository    $rolePermissions,
-        protected Authorizer                  $authorizer,
+        protected ScopeBoundary               $boundary,
     )
     {
         parent::__construct($roles, $permissions);
@@ -168,7 +167,7 @@ final readonly class Granter extends Operator
             return;
         }
 
-        if ($this->authorizer->can($scope, $permissions, Junction::And)) {
+        if ($this->boundary->allows($owner, $permissions)) {
             return;
         }
 

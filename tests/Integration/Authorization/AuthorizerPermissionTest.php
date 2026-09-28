@@ -105,7 +105,7 @@ final class AuthorizerPermissionTest extends TestCase
             $this->subjectRoles,
             $this->subjectPermissions,
             $this->rolePermissions,
-            $this->authorizer,
+            $this->createScopeBoundary($this->subjectPermissions, $this->subjectRoles),
         );
 
         $this->denier = new Denier(

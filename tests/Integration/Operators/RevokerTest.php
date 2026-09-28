@@ -48,14 +48,14 @@ final class RevokerTest extends TestCase
         $this->rolePermissions    = new InMemoryRolePermissionRepository();
         $this->subjectPermissions = new InMemorySubjectPermissionRepository();
         $this->subjectRoles       = new InMemorySubjectRoleRepository($this->rolePermissions);
-        $authorizer               = $this->createAuthorizer($this->subjectPermissions, $this->subjectRoles);
+        $boundary                 = $this->createScopeBoundary($this->subjectPermissions, $this->subjectRoles);
         $this->granter            = new Granter(
             $this->roles,
             $this->permissions,
             $this->subjectRoles,
             $this->subjectPermissions,
             $this->rolePermissions,
-            $authorizer,
+            $boundary,
         );
         $this->revoker            = new Revoker(
             $this->roles,

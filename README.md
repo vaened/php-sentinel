@@ -456,7 +456,8 @@ single call.
 
 [`Granter`](src/Operators/Granter.php) grants assignments.
 
-Its constructor requires an `Authorizer` after the repositories. Sentinel uses it to validate the requested permissions before mutating
+Its constructor requires a [`ScopeBoundary`](src/Authorization/ScopeBoundary.php) after the repositories. Sentinel uses it to validate the
+requested permissions before mutating
 an authorization relationship.
 
 ```php

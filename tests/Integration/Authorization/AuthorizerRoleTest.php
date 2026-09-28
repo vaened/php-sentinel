@@ -70,7 +70,7 @@ final class AuthorizerRoleTest extends TestCase
             $subjectRoles,
             $subjectPermissions,
             $rolePermissions,
-            $this->authorizer,
+            $this->createScopeBoundary($subjectPermissions, $subjectRoles),
         );
         $this->revoker    = new Revoker(
             $this->roles,

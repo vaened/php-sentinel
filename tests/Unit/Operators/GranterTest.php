@@ -314,7 +314,7 @@ final class GranterTest extends TestCase
             $subjectRoles,
             $subjectPermissions,
             $rolePermissions,
-            $this->createAuthorizer($subjectPermissions, $subjectRoles),
+            $this->createScopeBoundary($subjectPermissions, $subjectRoles),
         );
     }
 }
