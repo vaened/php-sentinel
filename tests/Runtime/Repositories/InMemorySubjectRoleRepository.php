@@ -67,7 +67,15 @@ final class InMemorySubjectRoleRepository implements SubjectRoleRepository
 
     public function exists(int|string $roleId): bool
     {
-        return array_any($this->items, fn($roles) => array_any($roles, fn($role) => $role->id() === $roleId));
+        foreach ($this->items as $roles) {
+            foreach ($roles as $role) {
+                if ($role->id() === $roleId) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public function allOf(Subject $subject): Roles

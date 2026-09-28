@@ -3,7 +3,7 @@
 [![Tests](https://github.com/vaened/php-sentinel/actions/workflows/tests.yml/badge.svg)](https://github.com/vaened/php-sentinel/actions/workflows/tests.yml)
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
 
-Framework-agnostic authorization core for PHP 8.4+.
+Framework-agnostic authorization core for PHP 8.2+.
 
 ```php
 // Registry: handled by a seeder or your admin UI
@@ -33,7 +33,7 @@ $authorizer->can($user, ['posts.edit']);   // true again
 composer require vaened/php-sentinel
 ```
 
-Requires PHP 8.4 or higher. Its only dependency is `vaened/support`.
+Requires PHP 8.2 or higher. Its only dependency is `vaened/support`.
 
 The example assumes concrete model and persistence implementations are already wired in your application bootstrap.
 

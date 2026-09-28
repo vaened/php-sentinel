@@ -20,7 +20,7 @@
     "role"
   ],
   "require": {
-    "php": "^8.4",
+    "php": "^8.2",
     "psr/simple-cache": "^3.0",
     "vaened/support": "^4.2"
   },

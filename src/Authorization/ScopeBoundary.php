@@ -34,8 +34,10 @@ final readonly class ScopeBoundary
         foreach ($this->propagation->scopes($owner) as $scope) {
             $entries = $this->permissions->for($scope, ...$permissions);
 
-            if (array_any($permissions, fn($permission) => !$entries->allows($permission))) {
-                return false;
+            foreach ($permissions as $permission) {
+                if (!$entries->allows($permission)) {
+                    return false;
+                }
             }
         }
 

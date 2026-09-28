@@ -37,7 +37,15 @@ final class InMemoryRolePermissionRepository implements RolePermissionRepository
 
     public function exists(int|string $permissionId): bool
     {
-        return array_any($this->items, fn($permissions) => array_any($permissions, fn($permission) => $permission->id() === $permissionId));
+        foreach ($this->items as $permissions) {
+            foreach ($permissions as $permission) {
+                if ($permission->id() === $permissionId) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public function allOf(Role $role): Permissions

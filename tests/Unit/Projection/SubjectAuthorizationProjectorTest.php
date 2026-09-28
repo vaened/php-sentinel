@@ -48,7 +48,7 @@ final class SubjectAuthorizationProjectorTest extends TestCase
                     ->with($subject)
                     ->willReturn(new SubjectPermissions([]));
 
-        $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
+        $projection = (new SubjectAuthorizationProjector($roles, $permissions))->project($subject);
 
         self::assertSame([
             'roles'       => [],
@@ -83,7 +83,7 @@ final class SubjectAuthorizationProjectorTest extends TestCase
                         new TestSubjectPermission(200, 'posts.delete', SubjectPermissionState::Denied),
                     ]));
 
-        $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
+        $projection = (new SubjectAuthorizationProjector($roles, $permissions))->project($subject);
 
         self::assertSame([
             'roles'       => ['admin', 'editor'],
@@ -122,7 +122,7 @@ final class SubjectAuthorizationProjectorTest extends TestCase
                         new TestSubjectPermission(300, 'users.delete'),
                     ]));
 
-        $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
+        $projection = (new SubjectAuthorizationProjector($roles, $permissions))->project($subject);
 
         self::assertSame([
             'roles'       => ['admin'],
@@ -163,7 +163,7 @@ final class SubjectAuthorizationProjectorTest extends TestCase
                         new TestSubjectPermission(400, 'posts.edit', SubjectPermissionState::Denied),
                     ]));
 
-        $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
+        $projection = (new SubjectAuthorizationProjector($roles, $permissions))->project($subject);
 
         self::assertSame([
             'roles'       => ['admin'],
@@ -190,7 +190,7 @@ final class SubjectAuthorizationProjectorTest extends TestCase
             new TestSubjectPermission(200, 'posts.edit'),
         ]));
 
-        $projection = new SubjectAuthorizationProjector($roles, $permissions)->project($subject);
+        $projection = (new SubjectAuthorizationProjector($roles, $permissions))->project($subject);
 
         self::assertSame(SubjectPermissionState::DirectInherited, $projection->permissions()->find('posts.edit')?->state());
     }

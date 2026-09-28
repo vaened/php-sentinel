@@ -43,10 +43,15 @@ final readonly class Authorizer
         return $this->evaluate(
             $permissions,
             $junction,
-            static fn(string $permission): bool => array_all(
-                $facts,
-                static fn(PermissionEntries $entries): bool => $entries->allows($permission),
-            ),
+            static function (string $permission) use ($facts): bool {
+                foreach ($facts as $entries) {
+                    if (!$entries->allows($permission)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            },
         );
     }
 
